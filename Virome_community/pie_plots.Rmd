@@ -20,7 +20,6 @@ library(dplyr)
 library(paletteer)
 library(ggthemes)
 library(showtext)
-library(showtext)
 ```
 
 ```{r}
