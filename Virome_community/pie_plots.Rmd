@@ -22,11 +22,6 @@ library(ggthemes)
 library(showtext)
 ```
 
-```{r}
-fonts <- theme(text = element_text(family = "Arial", size=14),
-    plot.title = element_text(family = "Arial", size=14, face = "bold", hjust=0.5, vjust=0.5))
-```
-
 
 # Load data
 
