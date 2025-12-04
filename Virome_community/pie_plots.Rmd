@@ -1,0 +1,212 @@
+---
+title: "Virome_community - species count and RPKMF pie plots"
+author: "Eevi Sipponen"
+date: 4-12-25
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Code for producing pie plots of RPKMF and species count distribution between hosts.
+
+# Load libraries
+
+```{r}
+library(data.table)
+library(here)
+library(ggplot2)
+library(dplyr)
+library(paletteer)
+library(ggthemes)
+library(showtext)
+library(showtext)
+```
+
+```{r}
+fonts <- theme(text = element_text(family = "Arial", size=14),
+    plot.title = element_text(family = "Arial", size=14, face = "bold", hjust=0.5, vjust=0.5))
+```
+
+
+# Load data
+
+esviritu_res = all detections from 2020-2021 & 2024-2025 with EsViritu, with host
+and disease information
+
+*_ANI90 = same df but with only detections with >= 90% average nucleotide identity
+
+```{r}
+esviritu_res <- fread(here("data", "Esviritu_HostDiseaseClassification.tsv"))
+
+esviritu_res_ANI90 <- esviritu_res %>%
+  filter(avg_read_identity >=0.90)
+```
+
+Overview of the taxa count between the dataframes
+
+```{r}
+esviritu_res %>% 
+  summarize(families = n_distinct(family),
+            genera = n_distinct(genus),
+            species = n_distinct(species_det),
+            subspecies = n_distinct(subspecies_det))
+
+esviritu_res_ANI90 %>% 
+  summarize(families = n_distinct(family),
+            genera = n_distinct(genus),
+            species = n_distinct(species_det),
+            subspecies = n_distinct(subspecies_det))
+```
+
+# Distribution of species per host
+
+## RPKMF & species count - pie chart
+
+```{r functions-for-pie-charts}
+summarize_tax_levels <- function(data, col, taxa_level){
+   #'@param data = dataframe to work with
+   #'@param col = column to group the data by, wrt what to calculate taxa
+   #'@param taxa_level = what taxa level to look for
+   #'Function to calculate the number of unique taxa in selected host level. 
+   #'Arrange the categories/groups and select the top 10 based on the sum value. 
+   #'Move others to category "Others" as well as any values with missing categories. 
+   #'Give each category a label for plotting with the sum value and proportion on the total value
+  data %>%
+    group_by(!!sym(col)) %>%
+    summarize(phylums=n_distinct(phylum),
+              classes=n_distinct(tclass),
+              orders=n_distinct(order),
+              families=n_distinct(family),
+              genera=n_distinct(genus),
+              species=n_distinct(species_det),
+              subspecies=n_distinct(subspecies_det),
+              .groups="drop") %>%
+    mutate(total_value=!!sym(taxa_level)) %>%
+    rename(category=!!sym(col)) %>%
+    arrange(desc(total_value)) %>%
+    mutate(category = ifelse(row_number() > 11 | category=="", "Others", category)) %>%
+    group_by(category) %>%
+    summarize(total_value=sum(total_value), .groups="drop") %>%
+    mutate(proportion = 100 * total_value / sum(total_value),
+         label = paste0(category, " (", round(total_value,2), " - ",
+                        round(proportion, 1), "%)")) %>%
+    arrange(desc(total_value))
+  
+}
+
+sum_cat_top10 <- function(data, col, val){
+    #'@param data = dataframe to work with
+   #'@param col = column to group the data by, wrt what to calculate the values
+   #'@param val = colname of the value to calculate (RPKMF or something else)
+   #'Function to calculate the number of unique taxa in selected host level. 
+   #'Arrange the categories/groups and select the top 10 based on the sum value. 
+   #'Move others to category "Others" as well as any values with missing categories. 
+   #'Give each category a label for plotting with the sum value and proportion on the total value
+  data %>%
+    group_by(!!sym(col)) %>%
+    summarize(total_value=sum(!!sym(val)), .groups="drop") %>%
+    rename(category = !!sym(col)) %>%
+    arrange(desc(total_value)) %>%
+    mutate(category = ifelse(row_number() > 11 | category=="", "Others", category)) %>%
+    group_by(category) %>%
+    summarise(total_value = sum(total_value), .groups = "drop")%>% 
+    mutate(proportion = 100 * total_value / sum(total_value),
+         label = paste0(category, " (", round(total_value,2), " - ",
+                        round(proportion, 1),"%)")) %>%
+    arrange(desc(total_value))
+  
+}
+
+host_pie <- function(data){
+  #'@param data = data from sum_cat_top10 or summarize_tax_levels
+  #'plot pie chart on that data, color by category and name the categories based on label
+  n_cat <- length(unique(data$category))
+  data$label <- factor(data$label, levels=data$label)
+  
+  data %>%
+  ggplot(data=., aes(x="", y=total_value, fill=label)) +
+  geom_bar(stat="identity", width=0.1) +
+  scale_fill_manual(values=paletteer_c("ggthemes::Sunset-Sunrise Diverging",(n_cat))) +
+  coord_polar("y", start=0) +
+  theme(legend.key.size = unit(1.1, "lines")) +
+  theme_void() 
+}
+```
+
+Define fonts to be used in the plots:
+```{r}
+fonts <- theme(text = element_text(family = "Arial", size=14),
+    plot.title = element_text(family = "Arial", size=14, face = "bold", hjust=0.5, vjust=0.5))
+```
+
+```{r function-to-save-pie-plots}
+save_pie_plot <- function(data, data_type="RPKMF", variable, legend_title, filtered=FALSE){
+  if (data_type=="species_count"){
+    plot <- host_pie(summarize_tax_levels(data, variable, "species"))+
+            guides(fill = guide_legend(title = legend_title)) +
+            labs(title="Species count distibution between hosts") +
+            fonts +
+            theme(legend.key.size = unit(0.8, "lines"))
+    
+    if(filtered==FALSE){
+      plot_name <- paste0("species_pie_", variable, ".jpg")
+    } else{
+      plot_name <- paste0("species_pie_", variable, "_ANI90.jpg")
+    }
+    
+    ggsave(plot, 
+       file = here("outputs/Figures/Virome_community",plot_name), 
+       width = 4, height = 2.8, units = "in", dpi=300)
+    
+  } else{
+    plot <- host_pie(sum_cat_top10(data, variable, "true_RPKMF"))+
+            guides(fill = guide_legend(title = legend_title)) +
+            labs(title="RPKMF distribution between hosts") +
+            fonts +
+            theme(legend.key.size = unit(0.8, "lines"))
+    if(filtered==FALSE){
+      plot_name <- paste0("RPKMF_pie_", variable, ".jpg")
+    } else{
+      plot_name <- paste0("RPKMF_pie_", variable, "_ANI90.jpg")
+    }
+    
+    ggsave(plot, 
+       file = here("outputs/Figures/Virome_community", plot_name), 
+       width = 4, height = 2.8, units = "in", dpi=300)
+  }
+}
+```
+
+```{r species-count-plots}
+#save species count pie plots
+
+#unfiltered data
+save_pie_plot(esviritu_res, "species_count", "host_kingdom", "Host Kingdom")
+save_pie_plot(esviritu_res, "species_count", "host_order", "Host Order")
+save_pie_plot(esviritu_res, "species_count", "host_genus", "Host Genus")
+save_pie_plot(esviritu_res, "species_count", "host_species", "Host Species")
+
+# ANI90 filtered data
+save_pie_plot(esviritu_res_ANI90, "species_count", "host_kingdom", "Host Kingdom", TRUE)
+save_pie_plot(esviritu_res_ANI90, "species_count", "host_order", "Host Order", TRUE)
+save_pie_plot(esviritu_res_ANI90, "species_count", "host_genus", "Host Genus", TRUE)
+save_pie_plot(esviritu_res_ANI90, "species_count", "host_species", "Host Species", TRUE)
+
+```
+
+```{r RPKMF-plots}
+#save RPKMF sum pie plots
+
+#unfiltered data
+save_pie_plot(esviritu_res, "RPKMF", "host_kingdom", "Host Kingdom")
+save_pie_plot(esviritu_res, "RPKMF", "host_order", "Host Order")
+save_pie_plot(esviritu_res, "RPKMF", "host_genus", "Host Genus")
+save_pie_plot(esviritu_res, "RPKMF", "host_species", "Host Species")
+
+# ANI90 filtered data
+save_pie_plot(esviritu_res_ANI90, "RPKMF", "host_kingdom", "Host Kingdom", TRUE)
+save_pie_plot(esviritu_res_ANI90, "RPKMF", "host_order", "Host Order", TRUE)
+save_pie_plot(esviritu_res_ANI90, "RPKMF", "host_genus", "Host Genus", TRUE)
+save_pie_plot(esviritu_res_ANI90, "RPKMF", "host_species", "Host Species", TRUE)
+```
