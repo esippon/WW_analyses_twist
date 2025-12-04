@@ -1,0 +1,286 @@
+---
+title: "Differential_abundance_analysis"
+author: "Eevi Sipponen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libraries
+
+```{r}
+library(ggplot2)
+library(maaslin3)
+library(tidyr)
+library(data.table)
+library(here)
+library(nationalparkcolors)
+library(pheatmap)
+```
+
+# Load data
+
+```{r}
+esviritu_human <- fread(here("data", "Human_data.tsv"))
+
+esviritu_human_ANI90 <- esviritu_human %>%
+  filter(avg_read_identity >=0.90)
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```
+
+# Format the input data
+```{r per-sample-taxa-level-RPKMF-df}
+RPKMF_df <- function(data, tax_level){
+  RPKMF_df <- data %>%
+    group_by(sample_ID, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(RPKMF)) %>%
+    ungroup()
+  
+  RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
+                    names_from = sample_ID,
+                    values_from = RPKMF,
+                    values_fill = list(RPKMF=0))
+
+  return(t(RPKMF_df_wide))
+}
+```
+
+Taxa level specific abundance dataframe - features as columns, samples as rows
+```{r}
+maaslin_in <- function(data, taxa_level){
+  RPKMF_df_taxa <- RPKMF_df(data, taxa_level)
+  colnames(RPKMF_df_taxa) <- RPKMF_df_taxa[1,]
+
+  RPKMF_df_taxa <- RPKMF_df_taxa[-1, ]
+
+  maaslin_in_abund <- matrix(as.numeric(RPKMF_df_taxa), 
+                         nrow = nrow(RPKMF_df_taxa), 
+                         ncol = ncol(RPKMF_df_taxa))
+
+  # Convert numeric matrix to data frame
+  maaslin_in_abund <- as.data.frame(maaslin_in_abund)
+
+  # Preserve row and column names (if they exist)
+  rownames(maaslin_in_abund) <- rownames(RPKMF_df_taxa)
+  colnames(maaslin_in_abund) <- colnames(RPKMF_df_taxa)
+  
+  return(maaslin_in_abund)
+
+}
+
+maaslin_in_hspecies <- maaslin_in(esviritu_human, "species")
+maaslin_in_hspecies_ANI90 <- maaslin_in(esviritu_human_ANI90, "species")
+
+
+#check that the input data looks right
+#typeof(maaslin_in_hspecies)
+#class(maaslin_in_hspecies)
+#str(maaslin_in_hspecies)
+maaslin_in_hspecies[1:5,1:5]
+
+maaslin_in_hspecies_ANI90[1:5,1:5]
+```
+
+Format the input metadata file
+
+```{r}
+maaslin_in_meta <- sample_metadata[,c("sample_ID", "Year",  "reads_in_sample")]
+maaslin_in_meta$reads_in_sample <- as.numeric(maaslin_in_meta$reads_in_sample)
+rownames(maaslin_in_meta) <- maaslin_in_meta$sample_ID
+
+maaslin_in_meta <- as.data.frame(maaslin_in_meta[,-1])
+maaslin_in_meta$reads_in_sample <- as.integer(maaslin_in_meta$reads_in_sample)
+
+#make years 2020-2021 and 2024-2025 a categorical variable
+maaslin_in_meta$Year_cat <- ifelse(maaslin_in_meta$Year == "2020" | 
+                                     maaslin_in_meta$Year == "2021", 
+                                   "2020-2021", "2024-2025")
+
+#typeof(maaslin_in_meta)
+#class(maaslin_in_meta)
+#str(maaslin_in_meta)
+maaslin_in_meta
+```
+
+Test difference between years
+No maaslin_comparison pairwise test needed with two groups
+
+```{r maaslin-analyses}
+set.seed(2025)
+
+human_species_year_input_model <- maaslin3(input_data = maaslin_in_hspecies,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_Human_Years',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        min_prevalence = 3/120,
+                        min_abundance = 0.0001,
+                        augment = TRUE,
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        median_comparison_prevalence = FALSE,
+                        cores = 3)
+
+human_species_year_input_model_ANI90 <- maaslin3(input_data = maaslin_in_hspecies_ANI90,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_Human_Years_ANI90',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        min_prevalence = 3/120,
+                        min_abundance = 0.0001,
+                        augment = TRUE,
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        median_comparison_prevalence = FALSE,
+                        cores = 3)
+```
+
+Plot volcano plots from the significant results
+
+```{r function-volcano-plot} 
+plot_volcano <- function(data){
+  #filter out results with errors, only keep ones without
+  #and only features significant by year comparison (no reads in sample)
+  plot_data <- data[is.na(data$error), ] %>%
+    filter(metadata=="Year_cat")
+  
+  plot_data$logqval <- -log10(plot_data$qval_individual)
+  #make qval=0 values plotting possible
+  plot_data$logqval[is.infinite(plot_data$logqval)] <- max(plot_data$logqval[is.finite(plot_data$logqval)], na.rm = TRUE) + 1
+  #categorize results based on significance
+  plot_data <- plot_data %>%
+  mutate(signif = case_when(
+    coef > 0 & qval_individual < 0.05 ~ "positive",
+    coef < 0 & qval_individual < 0.05 ~ "negative",
+    TRUE ~ "not_significant"
+  ))
+  
+  #clean the feature names, remove "s__"
+  plot_data$feature <- gsub("s__", "", plot_data$feature)
+  
+  #return(plot_data)
+  volcano_plot <- ggplot(plot_data, aes(x = coef, y = logqval)) +
+     geom_point(aes(color = signif), size=1) +
+     theme_bw() +
+     labs(x = "Effect Size (log2FC)",
+          y = "-log10(q-value)") +
+     scale_color_manual(labels = c("positive"="Positive", "negative"="Negative", "not_significant"="Not significant"),
+       values = c("positive"="#B23539","negative"="#514289", "not_significant"="grey"),
+       names("Significance"))+
+    theme(legend.position = "right") +
+     scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
+  
+  return(volcano_plot)
+}
+```
+
+```{r define-fonts}
+fonts <- theme(text = element_text(family = "Arial", size=18),
+    plot.title = element_text(family = "Arial", size=18, face = "bold", hjust=0.5, vjust=0.5))
+```
+
+
+```{r plot_volcano-plots}
+volcano_species_years <- plot_volcano(human_species_year_input_model$fit_data_abundance$results) +
+  labs(title="Differentially abundant species (2020/2021 vs. 2024/2025)") +
+  fonts 
+#ggsave(volcano_species_years, 
+#       file = here("outputs/Figures/Differential_Abundance_Analysis", "volcano_species_years.jpg"), 
+#       width = 5, height = 3, units = "in", dpi=300)
+
+volcano_species_years_ANI90 <- plot_volcano(human_species_year_input_model_ANI90$fit_data_abundance$results) +
+  labs(title="Differentially abundant species (2020/2021 vs. 2024/2025)") +
+  fonts
+#ggsave(volcano_species_years_ANI90, 
+#       file = here("outputs/Figures/Differential_Abundance_Analysis", "volcano_species_years_ANI90.jpg"), 
+#       width = 5, height = 3, units = "in", dpi=300)
+```
+
+
+Plot heatmap of the significant results
+
+```{r function-to-plot-heatmap}
+plot_heatmap <- function(data, original_data, test){
+  #filter out results with errors, only keep ones without
+  #keep only results associated with year comparison
+  signif_features <- data[is.na(data$error), ] %>%
+    filter(metadata=="Year_cat")
+  
+  #keep only the significant ones 
+  #filter only based on q-value (adjusted p-value)
+  #later by effect size?
+  signif_features <- signif_features %>%
+    filter(qval_individual < 0.05)
+  
+  #get the names of significant features, subset the original data based on that
+  plot_data <- t(original_data[colnames(original_data) %in% signif_features$feature])
+  rownames(plot_data) <- sub("s__", "", rownames(plot_data))
+  
+  #column annotations
+  annot_col <- data.frame(Year = c(rep("2020/2021", 60), rep("2024/2025", 60)))
+  rownames(annot_col) <- colnames(plot_data)
+  annot_colors <- list(Year = c("2020/2021" = "#9A84C8", "2024/2025" = "#E07C7C"))
+
+  main_title = ifelse(test=="a", "2020/2021 vs. 2024/2025 - differentially abundant species",
+                "2020/2021 vs. 2024/2025 - differentially prevalent species")
+  print(main_title)
+  #plot heatmap
+  pal <- colorRampPalette(c("#514289", "white", "#B23539"))(100)
+  
+  plot <- pheatmap(log2(plot_data+1),
+           color = pal,
+           cluster_rows = TRUE,
+           cluster_cols = FALSE,
+           show_colnames = FALSE,
+           scale = "row",
+           annotation_col = annot_col,
+           annotation_colors = annot_colors,
+           breaks = seq(-2, 2, length.out = 101),
+           main = main_title)
+
+  return(plot)
+  
+}
+```
+
+```{r save-abundance-heatmaps}
+hm_DA_species <- plot_heatmap(human_species_year_input_model$fit_data_abundance$results, 
+                              maaslin_in_hspecies, "a") 
+#ggsave(hm_DA_species, 
+#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DA_species.jpg"), 
+#       width = 10, height = 6, units = "in", dpi=300)
+
+hm_DA_species_ANI90 <- plot_heatmap(human_species_year_input_model_ANI90$fit_data_abundance$results, 
+                                    maaslin_in_hspecies_ANI90, "a") 
+#ggsave(hm_DA_species_ANI90, 
+#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DA_species_ANI90.jpg"), 
+#       width = 10, height = 6, units = "in", dpi=300)
+
+```
+```{r save-prevalence-heatmaps}
+hm_DP_species <- plot_heatmap(human_species_year_input_model$fit_data_prevalence$results, 
+                              maaslin_in_hspecies, "p")
+
+#ggsave(hm_DP_species, 
+#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DP_species.jpg"), 
+#       width = 10, height = 6, units = "in", dpi=300)
+
+hm_DP_species_ANI90 <- plot_heatmap(human_species_year_input_model_ANI90$fit_data_prevalence$results, 
+                                    maaslin_in_hspecies_ANI90, "p")
+
+#ggsave(hm_DP_species_ANI90, 
+#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DP_species_ANI90.jpg"), 
+#       width = 10, height = 6, units = "in", dpi=300)
+```
