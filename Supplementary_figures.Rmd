@@ -1,0 +1,351 @@
+---
+title: "Descriptive_statistics"
+author: "Eevi Sipponen"
+date: "5-12-25"
+---
+
+R scritpt for 
+
+text = element_text(family = "Arial", size = 12),
+  plot.title = element_text(family = "Arial", size = 12, face = "bold")
+
+Figures: 
+•	Font: Arial 
+•	Font size: 14 
+•	Figure resolution 300 dbi 
+•	Consistently the same colours for the same things (years 2020 and 2021 with similar colours or same virus species with same colour, same virus species in same virus family with similar colours. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libraries
+
+```{r}
+library(data.table)
+library(here)
+library(ggplot2)
+library(dplyr)
+library(vegan)
+library(cowplot)
+library(showtext)
+library(paletteer)
+```
+
+# Load data
+
+```{r}
+esviritu_human <- fread(here("data", "Human_data.tsv"))
+esviritu_res <- fread(here("data", "Esviritu_HostDiseaseClassification.tsv"))
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```
+
+```{r}
+esviritu_human_ANI90 <- esviritu_human %>%
+  filter(avg_read_identity >=0.90)
+
+esviritu_res_ANI90 <- esviritu_res %>%
+  filter(avg_read_identity >=0.90)
+```
+
+## Sequence rarefaction
+
+```{r}
+read_matrix <- function(data, taxa_level){
+  rm <- data %>%
+    group_by(sample_ID, !!sym(taxa_level)) %>%
+    summarize(reads=sum(set_read_count)) %>%
+    ungroup()
+
+  rm <- as.data.frame(pivot_wider(data=rm,
+                    names_from = sample_ID,
+                    values_from = reads,
+                    values_fill = list(reads=0)))
+
+  return(rm)
+
+}
+
+plot_rarecurve_plot <- function(data, taxa_level){
+  read_counts <- read_matrix(data, taxa_level)
+  
+  rarecurve_data <- read_counts[,-1]
+  rownames(rarecurve_data) <- read_counts[[taxa_level]]
+
+  rarecurve <-  rarecurve(t(rarecurve_data), step = 500, 
+                          label=FALSE, cex=0.2, tidy = TRUE)
+  
+  colnames(rarecurve) <- c("Site", "Sample", "Taxa_level")
+  rarecurve$cat <- ifelse(grepl("^(2020|2021)", as.character(rarecurve$Site)), "2020-2021", "2024-2025")
+  
+  pal <- park_palette("DeathValley")[c(6,1)]
+
+  plot <- ggplot(data=rarecurve, aes(x=Sample, y=Taxa_level, color=cat)) +
+  geom_point(size=0.1) +
+    scale_color_manual(values=pal) +
+  theme_bw() +
+    facet_grid(~cat) +
+  labs(x="Sequences",
+       y="Species") +
+  theme(legend.position = "none")
+  
+  return(plot)
+}
+```
+
+```{r}
+fonts <- theme(text = element_text(family = "Arial", size=25),
+    plot.title = element_text(family = "Arial", size=25, face = "bold", hjust=0.5, vjust=0.5))
+```
+
+```{r}
+rarecurve_human <- plot_rarecurve_plot(esviritu_human, "species") +
+  fonts
+#ggsave(rarecurve_human, file= here("outputs/Figures/Supplementary_figures", 
+#                            "rarecurve_human.png"), width = 7.2, height = 4, units = "in", dpi=300)
+
+
+rarecurve_human_ANI90 <-plot_rarecurve_plot(esviritu_human_ANI90, "species")+
+  fonts
+#ggsave(rarecurve_human_ANI90, file= here("outputs/Figures/Supplementary_figures", 
+#                            "rarecurve_human_ANI90.png"), width = 7.2, height = 4, units = "in", dpi=300)
+
+rarecurve_all <- plot_rarecurve_plot(esviritu_res, "species_det")+
+  fonts
+
+#ggsave(rarecurve_all, file= here("outputs/Figures/Supplementary_figures", 
+#                            "rarecurve_all.png"), width = 7.2, height = 4, units = "in", dpi=300)
+
+rarecurve_all_ANI90 <- plot_rarecurve_plot(esviritu_res_ANI90, "species_det")+
+  fonts
+#ggsave(rarecurve_all_ANI90, file= here("outputs/Figures/Supplementary_figures", 
+#                            "rarecurve_all_ANI90.png"), width = 7.2, height = 4, units = "in", dpi=300)
+
+```
+
+
+## Viral read proportions
+
+```{r}
+summarize_viral_reads <- function(data){
+  data %>%
+    group_by(sample_ID) %>%
+    summarize(total_mapped=sum(set_read_count),
+              total_reads=first(filtered_reads_in_sample),
+              viral_reads_percentage=(total_mapped/total_reads)*100,
+              .groups="drop") %>%
+    mutate(Year_cat=ifelse(grepl("^(2020|2021)", sample_ID), 
+                          "2020-2021", "2024-2025"))
+}
+```
+
+```{r}
+pal <- park_palette("DeathValley")[c(6,1)]
+#plot viral read proportion of all samples
+plot_vread_percentage_all <- function(data){
+  mean_val <- round(mean(data$viral_reads_percentage),3)
+  median_val <- round(median(data$viral_reads_percentage),3)
+  ggplot(data=data, aes(x="",y=viral_reads_percentage, fill=Year_cat)) +
+    scale_fill_manual(values=pal) +
+    geom_boxplot() +
+    theme_bw() +
+    labs(y = "Percentage",
+         x="",
+         title="Percentage of reads \naligned to viral genomes") +
+    theme(axis.text.y = element_text(size=10),
+          title = element_text(size=10),
+          legend.position = "none") + 
+    facet_grid(~Year_cat)+
+    scale_y_continuous(labels = function(x) paste0(x, "%")) 
+
+}
+
+
+#plot number of viral reads for all samples
+plot_vread_number_all <- function(data){
+  mean_val <- format(mean(data$total_mapped), 
+                        scientific = T, digits = 6)
+  median_val <- format(median(data$total_mapped), 
+                          scientific =T, digits=6)
+  
+  ggplot(data=data, aes(x="",y=total_mapped, fill=Year_cat)) +
+    scale_fill_manual(values=pal) +
+    geom_boxplot() +
+    theme_bw() +
+    labs(y = "Reads aligned to viral genomes",
+         x="",
+    title="Number of viral reads") +
+    facet_grid(~Year_cat)+
+    theme(axis.text.x = element_text(angle=45, hjust=1),
+          axis.text.y = element_text(size=10),
+          title = element_text(size=10),
+          legend.position = "none")
+}
+
+```
+
+```{r}
+v_reads_human <- summarize_viral_reads(esviritu_human)
+v_reads_human_ANI90 <- summarize_viral_reads(esviritu_human_ANI90)
+
+v_reads_all <- summarize_viral_reads(esviritu_res)
+v_reads_all_ANI90 <- summarize_viral_reads(esviritu_res_ANI90)
+```
+
+
+```{r}
+save_v_reads_plot <- function(data, variable, filtered=FALSE){
+    
+  plot <- plot_grid(plot_vread_percentage_all(data),
+            plot_vread_number_all(data))
+  
+    if(filtered==FALSE){
+      plot_name <- paste0("v_reads_", variable, "_years.jpg")
+    } else{
+      plot_name <- paste0("species_pie_", variable, "_years_ANI90.jpg")
+    }
+  
+  ggsave(plot, 
+       file = here("outputs/Figures/Supplementary_figures",plot_name), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+}
+```
+
+```{r}
+save_v_reads_plot(v_reads_human, "human")
+save_v_reads_plot(v_reads_human_ANI90, "human", filtered=TRUE)
+
+save_v_reads_plot(v_reads_all, "all")
+save_v_reads_plot(v_reads_all_ANI90, "all", filtered=TRUE)
+
+```
+
+
+## Genome coverage categories
+
+```{r}
+calc_coverage_cats <- function(data){
+  data %>%
+  mutate(coverage = covered_bases/Asm_length) %>%
+  mutate(cov_category = case_when(
+    coverage >= 0.8 ~ "Over 80%",
+    coverage < 0.8 & coverage >= 0.5 ~ "50% to 80%",
+    coverage < 0.5 & coverage >= 0.1 ~ "10% to 50%",
+    TRUE ~ "< 10%"
+  ))
+}
+
+calc_coverage_cats_years <- function(data){
+  data %>%
+  mutate(Year_cat = ifelse(grepl("^(2020|2021)", sample_ID), 
+                          "2020-2021", "2024-2025")) %>%
+  group_by(Year_cat) %>%
+  mutate(coverage = covered_bases/Asm_length) %>%
+  mutate(cov_category = case_when(
+    coverage >= 0.8 ~ "Over 80%",
+    coverage < 0.8 & coverage >= 0.5 ~ "50% to 80%",
+    coverage < 0.5 & coverage >= 0.1 ~ "10% to 50%",
+    TRUE ~ "< 10%"
+  ))
+}
+
+
+```
+
+```{r}
+plot_coverage_cat <- function(data, years=FALSE){
+
+  if (years==FALSE){
+    cols <- c("#fbb373", "#faa050", "#e19048", "#af7038")
+  
+  plot_data <- calc_coverage_cats(data) %>%
+    group_by(sample_ID, cov_category) %>%
+    summarize(seqs = n_distinct(Accession)) %>%
+    group_by(cov_category) %>%
+    mutate(cov_category = factor(cov_category, levels = c("< 10%",
+                                                        "10% to 50%",
+                                                        "50% to 80%",
+                                                        "Over 80%")))
+
+  plot <- ggplot(data=plot_data, aes(x=cov_category, y=seqs, fill = cov_category)) +
+  geom_boxplot(color = "grey20", draw_quantiles = c(0.5)) +
+  scale_fill_manual(values = cols) +
+  scale_color_manual(values = cols) +
+
+  #xlim(c(0,150)) +
+  theme_bw() +
+  labs(y = "# virus references\nwith coverage level per sample",
+       x = "Genome/segment coverage") +
+  theme(legend.position = "Off",
+        axis.text.x = element_text(size=10),
+        strip.text = element_text(size=10))
+  
+  return(plot)
+  } else{
+    cols_21 <- c("#a8a1c4", "#7468a1","#625595", "#514289")
+    cols_24 <- c("#c97274","#b23539", "#8e2a2e", "#6b2022")
+    
+    plot_data <- calc_coverage_cats_years(data) %>%
+      group_by(Year_cat, sample_ID, cov_category) %>%
+      summarize(seqs = n_distinct(Accession)) %>%
+      group_by(cov_category) %>%
+      mutate(cov_category = factor(cov_category, levels = c("< 10%",
+                                                        "10% to 50%",
+                                                        "50% to 80%",
+                                                        "Over 80%")))
+    
+    plot_data$cat_facet <- paste(plot_data$cov_category, plot_data$Year_cat, sep = "_")
+
+
+  plot <- ggplot(data=plot_data, aes(x=cov_category, y=seqs, fill = cat_facet)) +
+  geom_boxplot(color = "grey20") +
+  #xlim(c(0,150)) +
+  theme_bw() +
+  labs(y = "# virus references\nwith coverage level per sample",
+       x = "Genome/segment coverage") +
+  facet_grid(~Year_cat)+
+  scale_fill_manual(values = c(
+    setNames(cols_21, paste(c("< 10%","10% to 50%","50% to 80%","Over 80%"), "2020-2021", sep = "_")),
+    setNames(cols_24, paste(c("< 10%","10% to 50%","50% to 80%","Over 80%"), "2024-2025", sep = "_"))
+  )) +
+  scale_color_manual(values = c(
+    setNames(cols_21, paste(c("< 10%","10% to 50%","50% to 80%","Over 80%"), "2020-2021", sep = "_")),
+    setNames(cols_24, paste(c("< 10%","10% to 50%","50% to 80%","Over 80%"), "2024-2025", sep = "_"))
+  )) +
+  theme(legend.position = "Off",
+        axis.text.x = element_text(size=10),
+        strip.text = element_text(size=10))
+  
+  return(plot)
+  }
+}
+```
+
+
+```{r}
+save_cov_cat_plot <- function(data, variable, filtered=FALSE){
+    
+  plot <- plot_coverage_cat(data, years=TRUE)
+  
+    if(filtered==FALSE){
+      plot_name <- paste0("cov_cat_", variable, "_years.jpg")
+    } else{
+      plot_name <- paste0("cov_cat_", variable, "_years_ANI90.jpg")
+    }
+  
+  ggsave(plot, 
+       file = here("outputs/Figures/Supplementary_figures",plot_name), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+}
+```
+
+
+```{r}
+save_cov_cat_plot(esviritu_human, "human")
+save_cov_cat_plot(esviritu_human_ANI90, "human", filtered=TRUE)
+
+save_cov_cat_plot(esviritu_res, "all")
+save_cov_cat_plot(esviritu_res_ANI90, "all", filtered=TRUE)
+```
