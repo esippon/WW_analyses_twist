@@ -1,7 +1,7 @@
 ---
 title: "Taxonomic_tree"
 author: "Eevi Sipponen"
-date: "4-12-25"
+date: "5-12-25"
 ---
 
 ```{r setup, include=FALSE}
@@ -17,7 +17,6 @@ library(readxl)
 library(lubridate)
 library(tidyr)
 library(rprojroot)
-library(ade4)
 library(ggtree)
 library(here)
 library(nationalparkcolors)
@@ -33,6 +32,12 @@ esviritu_human = human viruses detected from 2020-2021 & 2024-2025 samples with 
 #esviritu_res <- fread(here("data", "Esviritu_HostDiseaseClassification.tsv"))
 esviritu_human <- fread(here("data", "Human_data.tsv"))
 sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```
+
+```{r}
+sample_metadata$Year_cat <- ifelse(sample_metadata$Year == "2020" | 
+                                     sample_metadata$Year == "2021", 
+                                   "2020-2021", "2024-2025")
 ```
 
 
@@ -71,41 +76,46 @@ tax.phy <- taxo2phylog(as.taxo(hierarchical_df))
 
 Group RPKMF by sample_ID/species
 ```{r}
-species_abund_dt <- esviritu_human %>%
-  group_by(sample_ID, species) %>%
-  summarise(RPKMF = sum(RPKMF)) %>%
-  ungroup()
-
 species_meta_dt <- merge(esviritu_human, sample_metadata,
                          by = "sample_ID") %>%
-  group_by(City) %>%
+  #group by year category (2020-2021 and 2024-2025)
+  group_by(Year_cat) %>%
+  #count total_samples as the number of unique sample names in year category
   mutate(total_samples = n_distinct(sample_ID)) %>%
+  # ungroup by year category
   ungroup() %>%
-  group_by(species, City, total_samples) %>%
+  #count how many distinct samples contained each species (n)
+  group_by(species, Year_cat, total_samples) %>%
   summarize(n = n_distinct(sample_ID)) %>%
+  #freq= proportion of samples (60) that contained each species
   mutate(freq = n / total_samples) %>%
   ungroup() %>%
-  complete(nesting(City, total_samples), species,
+  #fill the possible missing combinations with 0
+  complete(nesting(Year_cat, total_samples), species,
            fill=list(n=0, freq=0))
 
-
-important_info_dt <- species_meta_dt %>%
+freq_info_dt <- species_meta_dt %>%
   group_by(species) %>%
+  #total_number = total number of samples where the species was found
+  #h_freq= relative frequency per year (frequencies add up to 1)
   mutate(total_number = sum(n),
          h_freq = freq/ sum(freq)) %>%
-  dplyr::select(species, total_number, h_freq) %>%
+  #get the relative requency of a species wrt 2024-2025
+  #1 if was detected onöy in 24/25, 0 if only in 20/21
+  filter(Year_cat=="2024-2025") %>%
+  select(species, total_number, h_freq) %>%
   ungroup() %>%
   distinct() %>%
   mutate(species = gsub("\\W+", "", species)) 
 
 
-important_info_df <- important_info_dt %>% 
-  ungroup() %>%
-  mutate(species = gsub("\\W+", "", species))
+#freq_info_df <- freq_info_dt %>% 
+#  ungroup() %>%
+#  mutate(species = gsub("\\W+", "", species))
 
-important_info_df <- as.data.frame(important_info_df, 
-                                   stringsAsFactors=TRUE, 
-                                   row.names = "species")
+#freq_info_df <- as.data.frame(freq_info_df, 
+#                                   stringsAsFactors=TRUE, 
+#                                   row.names = "species")
 ```
 
 
@@ -116,32 +126,35 @@ t1 <- ggtree::ggtree(tax.phy, layout = "daylight",branch.length = "scaled",
 ```
 
 ```{r}
-important_info_dt$total_number <- as.numeric(important_info_dt$total_number)
+freq_info_dt$total_number <- as.numeric(freq_info_dt$total_number)
 ```
 
 Family level annotations based on these:
 geom_text(aes(label=node))
 View(t1@data)
+
 ```{r}
 fonts <- theme(text = element_text(family = "Arial"),
     plot.title = element_text(family = "Arial", face = "bold", hjust=0.5, vjust=0.5))
 ```
 
 
-```{r}
+```{r detection-freq-annotation}
 pal <- park_palette("DeathValley")
 
-tax_tree <- t1 %<+% important_info_dt + 
+tax_tree <- t1 %<+% freq_info_dt + 
   geom_tippoint(aes(color=total_number, size = total_number), alpha = 0.8) +
-  scale_color_gradientn(colors = c(pal[5], pal[3], pal[6]),
+  scale_color_gradientn(colors = c(pal[6], pal[2], pal[1]),
                         breaks = c(1,30,60,90,119),
                         labels = c("1", "30", "60", "90", "120") ) +
+  
   scale_size_continuous(breaks = c(1,30,60,90,119),
                         labels = c("1", "30", "60", "90", "120") ) +
-  #geom_text(aes(label=node), hjust=-.5, size=3) +
-  guides(color = guide_legend("Total Detections (1-120)", nrow=1),
-  size = guide_legend("Total Detections (1-120)"), nrow=1) +
-  xlim(-10,15) +
+
+  guides(color = guide_legend(title = "Total Detections (1-120)"),
+         size = guide_legend("Total Detections (1-120)"), nrow=1) +
+
+  xlim(-8,12) +
   geom_cladelab(node = 317, label = "Anelloviridae", fontsize = 8, hjust=0.4) +
   geom_cladelab(node = 312, label = "Adenoviridae", fontsize =  8, hjust=-0.2) +
   geom_cladelab(node = 306, label = "Astroviridae", fontsize =  8, hjust=-0.2) +
@@ -151,7 +164,7 @@ tax_tree <- t1 %<+% important_info_dt +
   geom_cladelab(node = 285, label = "Picobirnaviridae", fontsize =  8, hjust=-0.1) +
   geom_cladelab(node = 275, label = "Orthoherpesviridae", fontsize =  8, hjust=-0.1) +
   geom_cladelab(node = 270, label = "Poxviridae", fontsize =  8, hjust=-0.1) +
-  geom_cladelab(node = 264, label = "Pneumoviridae", fontsize =  8, hjust=-0.1, vjust=1) +
+  geom_cladelab(node = 264, label = "Pneumoviridae", fontsize =  8, hjust=0, vjust=1) +
   geom_cladelab(node = 260, label = "Paramyxoviridae", fontsize =  8, hjust=-0.1) +
   geom_cladelab(node = 254, label = "Orthomyxoviridae", fontsize =  8, hjust=0, vjust=1) +
   geom_cladelab(node = 249, label = "Flaviviridae", fontsize =  8, hjust=0.5, vjust=2.5) +
@@ -159,26 +172,91 @@ tax_tree <- t1 %<+% important_info_dt +
   geom_cladelab(node = 239, label = "Sedoreoviridae", fontsize =  8, hjust=1.1) +
   geom_cladelab(node = 233, label = "Genomoviridae", fontsize =  8, hjust=1.1) +
   geom_cladelab(node = 227, label = "Circoviridae", fontsize =  8, hjust=1.1) +
-  geom_cladelab(node = 216, label = "Parvoviridae", fontsize =  8, hjust=3.5, barsize=0) +
+  geom_cladelab(node = 216, label = "Parvoviridae", fontsize =  8, hjust=4.1, barsize=0) +
   geom_taxalink(taxa2="s__Bufavirus3",taxa1="s__Bocaparvovirusprimate1",
                 color="black", curvature=0.4, offset=-0.02, ncp=3) +
   
-  geom_cladelab(node = 207, label = "Papillomaviridae", fontsize =  8, hjust=2.9, 
-                vjust=-0.8, barsize=0) +
+  geom_cladelab(node = 207, label = "Papillomaviridae", fontsize =  8, hjust=3.3, 
+                vjust=-2, barsize=0) +
   geom_taxalink(taxa2="s__Papillomavirushomo8923",taxa1="s__Humanpolyomavirus16",
-                color="black", curvature=0.6, offset=-0.03, ncp=5) +
+                color="black", curvature=0.6, offset=-0.02, ncp=5) +
   
   geom_cladelab(node = 201, label = "Polyomaviridae", fontsize =  8, hjust=1.2, vjust=-0.2) +
   
-  theme(legend.position = "bottom", legend.direction = "horizontal",
+  theme(legend.position = "bottom", 
+        legend.direction = "horizontal",
+        #legend.box = "vertical",
         legend.title = element_text(size = 25),
         legend.text = element_text(size=25),
         panel.background = element_rect(fill = "transparent", color = NA),
-        #plot.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        legend.background = element_rect(fill = "transparent", color = NA),
+        legend.box.background = element_rect(fill = "transparent", color = NA)) +
+  fonts
+tax_tree
+#ggsave(tax_tree, file= here("outputs/Figures/Virome_Community", 
+#                            "tax_tree.png"), width=8, height=6, dpi=300)
+```
+
+
+```{r detection-freq-year-annotation}
+pal <- park_palette("DeathValley")
+
+tax_tree_year <- t1 %<+% important_info_dt + 
+  geom_tippoint(aes(color=h_freq, size = total_number), alpha = 0.8) +
+  scale_color_gradient2(low=pal[6], high=pal[1], mid=pal[2], midpoint=0.5,
+                        breaks = c(0, 0.5, 1),
+                        labels = c("2020-2021", "both", "2024-2025"), 
+                        guide="colorbar") +
+  
+  scale_size_continuous(breaks = c(1,30,60,90,119),
+                        labels = c("1", "30", "60", "90", "120") ) +
+
+  guides(color = guide_colorbar(title = "", barwidth = 8),
+         size = guide_legend("Total Detections (1-120)"), nrow=1) +
+
+  xlim(-8,12) +
+  geom_cladelab(node = 317, label = "Anelloviridae", fontsize = 8, hjust=0.4) +
+  geom_cladelab(node = 312, label = "Adenoviridae", fontsize =  8, hjust=-0.2) +
+  geom_cladelab(node = 306, label = "Astroviridae", fontsize =  8, hjust=-0.2) +
+  geom_cladelab(node = 296, label = "Picornaviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 293, label = "Caliciviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 289, label = "Coronaviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 285, label = "Picobirnaviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 275, label = "Orthoherpesviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 270, label = "Poxviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 264, label = "Pneumoviridae", fontsize =  8, hjust=0, vjust=1) +
+  geom_cladelab(node = 260, label = "Paramyxoviridae", fontsize =  8, hjust=-0.1) +
+  geom_cladelab(node = 254, label = "Orthomyxoviridae", fontsize =  8, hjust=0, vjust=1) +
+  geom_cladelab(node = 249, label = "Flaviviridae", fontsize =  8, hjust=0.5, vjust=2.5) +
+  geom_cladelab(node = 244, label = "Hepeviridae", fontsize =  8, hjust=1, vjust=1.5) +
+  geom_cladelab(node = 239, label = "Sedoreoviridae", fontsize =  8, hjust=1.1) +
+  geom_cladelab(node = 233, label = "Genomoviridae", fontsize =  8, hjust=1.1) +
+  geom_cladelab(node = 227, label = "Circoviridae", fontsize =  8, hjust=1.1) +
+  geom_cladelab(node = 216, label = "Parvoviridae", fontsize =  8, hjust=4.1, barsize=0) +
+  geom_taxalink(taxa2="s__Bufavirus3",taxa1="s__Bocaparvovirusprimate1",
+                color="black", curvature=0.4, offset=-0.02, ncp=3) +
+  
+  geom_cladelab(node = 207, label = "Papillomaviridae", fontsize =  8, hjust=3.3, 
+                vjust=-2, barsize=0) +
+  geom_taxalink(taxa2="s__Papillomavirushomo8923",taxa1="s__Humanpolyomavirus16",
+                color="black", curvature=0.6, offset=-0.02, ncp=5) +
+  
+  geom_cladelab(node = 201, label = "Polyomaviridae", fontsize =  8, hjust=1.2, vjust=-0.2) +
+  
+  theme(legend.position = "bottom", 
+        legend.direction = "horizontal",
+        #legend.box = "vertical",
+        legend.title = element_text(size = 25),
+        legend.text = element_text(size=25),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA),
         legend.background = element_rect(fill = "transparent", color = NA),
         legend.box.background = element_rect(fill = "transparent", color = NA)) +
   fonts
 
-#tax_tree
-#ggsave(tax_tree, file= here("outputs/Figures/Virome_Community", "tax_tree.png"), width=8, height=6, dpi=300)
+#tax_tree_year
+
+#ggsave(tax_tree_year, file= here("outputs/Figures/Virome_Community", 
+#                                 "tax_tree_years.png"), width=8, height=6, dpi=300)
 ```
