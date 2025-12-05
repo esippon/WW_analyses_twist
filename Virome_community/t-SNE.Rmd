@@ -1,0 +1,143 @@
+---
+title: "t-SNE"
+author: "Eevi Sipponen"
+date: '5-12-25'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+t-SNE on species level RPKMF values
+
+## Load libraries
+
+```{r}
+library(tidyr)
+library(Rtsne)
+library(ggplot2)
+```
+
+
+## Load data
+
+esviritu_human = human viruses detected from 2020-2021 & 2024-2025 samples with EsViritu
+*_ANI90 = same df but with only detections with >= 90% average nucleotide identity
+
+```{r}
+esviritu_human <- fread(here("data", "Human_data.tsv"))
+
+esviritu_human_ANI90 <- esviritu_human %>%
+  filter(avg_read_identity >=0.90)
+```
+
+```{r}
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+
+sample_metadata$Year_cat <- ifelse(sample_metadata$Year == "2020" | 
+                                     sample_metadata$Year == "2021", 
+                                   "2020-2021", "2024-2025")
+```
+
+
+## t-SNE on RPKMF
+
+```{r create-RPKMF-dataframe}
+RPKMF_df <- function(data, tax_level){
+  RPKMF_df <- data %>%
+    group_by(sample_ID, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(RPKMF)) %>%
+    ungroup()
+  
+  RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
+                    names_from = sample_ID,
+                    values_from = RPKMF,
+                    values_fill = list(RPKMF=0))
+
+  return(RPKMF_df_wide)
+}
+```
+
+
+```{r tSNE-on-RPKMF}
+tsne_RPKMF <- function(data, taxa_level, perplex, color_var){
+  set.seed(2025)
+  df <- RPKMF_df(data, taxa_level)
+  df[1,1] <- NA
+  
+  df_wide <- t(df[,-1])
+  colnames(df_wide) <- df[[taxa_level]]
+  
+  prcomp1 <- prcomp(log10(df_wide+1),scale. = TRUE)
+  #return(prcomp1)
+  var_exp <- round(prcomp1$sdev^2 / sum(prcomp1$sdev^2)*100,2)
+  #return(var_exp)  #return this to calculate captured variance by PC
+  
+  #use only first 10 principal components in Rtse to reduce noise
+  tsne <- Rtsne(prcomp1$x[,1:10], perplexity = perplex, pca=FALSE)
+  tsne_val <- tsne$Y
+  
+  rownames(tsne_val) <- colnames(df)[-1]
+  
+  tsne_val_df <- as.data.frame(tsne_val)
+  tsne_val_dt <- setDT(tsne_val_df, keep.rownames = "sample_ID")
+  tsne_val_dt <- merge(tsne_val_dt, sample_metadata, by ="sample_ID")
+  tsne_val_dt$color <- factor(tsne_val_dt[[color_var]])
+  
+  pal <- park_palette("DeathValley")[c(6,1)]
+
+  ggplot(tsne_val_dt, aes(x=V1, y=V2, color=factor(tsne_val_dt[[color_var]]))) +
+    geom_point(size = 3, alpha = 0.8) +
+    scale_shape_manual(values=c(15, 16, 17, 18, 3, 4 ,8, 9, 11, 13)) +
+    scale_color_manual(name = c("Year"), values = pal) +
+    theme_bw() +
+ theme(panel.grid.major = element_blank(), 
+       panel.grid.minor = element_blank(),
+        panel.background = element_blank())+
+    
+    labs(x=sprintf("tSNE-1"), 
+         y=sprintf("tSNE-2"))
+}
+```
+
+```{r}
+fonts <- theme(text = element_text(family = "Arial", size=25),
+    plot.title = element_text(family = "Arial", size=25, face = "bold", hjust=0.5, vjust=0.5))
+```
+
+
+```{r tsne-plots}
+tsne_species_20PC <- tsne_RPKMF(esviritu_human, "species", 30, "Year_cat") +
+  fonts
+#ggsave(tsne_species_20PC, file= here("outputs/Figures/Virome_Community", 
+#       "tsne_species_20PC.png"), width = 7.2, height = 4, units = "in", dpi=300)
+
+tsne_genus <- tsne_RPKMF(esviritu_human, "genus", 30, "Year_cat")+
+  fonts
+
+
+tsne_order <- tsne_RPKMF(esviritu_human, "order", 30, "Year_cat")+
+  fonts
+
+tsne_family <- tsne_RPKMF(esviritu_human, "family", 30, "Year_cat")+
+  fonts
+```
+
+```{r tsne-with-ANI90}
+tsne_species_20PC_ANI90 <- tsne_RPKMF(esviritu_human_ANI90, "species", 30, "Year_cat") +
+  fonts
+#ggsave(tsne_species_20PC_ANI90, file= here("outputs/Figures/Virome_Community", 
+#                            "tsne_species_20PC_ANI90.png"), width = 7.2, height = 4, units = "in", dpi=300)
+
+tsne_genus_ANI90 <- tsne_RPKMF(esviritu_human_ANI90, "genus", 30, "Year_cat")+
+  fonts
+
+
+tsne_order_ANI90 <- tsne_RPKMF(esviritu_human_ANI90, "order", 30, "Year_cat")+
+  fonts
+
+
+tsne_family_ANI90 <- tsne_RPKMF(esviritu_human_ANI90, "family", 30, "Year_cat")+
+  fonts
+
+```
