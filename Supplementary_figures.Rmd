@@ -4,18 +4,6 @@ author: "Eevi Sipponen"
 date: "5-12-25"
 ---
 
-R scritpt for 
-
-text = element_text(family = "Arial", size = 12),
-  plot.title = element_text(family = "Arial", size = 12, face = "bold")
-
-Figures: 
-•	Font: Arial 
-•	Font size: 14 
-•	Figure resolution 300 dbi 
-•	Consistently the same colours for the same things (years 2020 and 2021 with similar colours or same virus species with same colour, same virus species in same virus family with similar colours. 
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
