@@ -101,8 +101,8 @@ tsne_RPKMF <- function(data, taxa_level, perplex, color_var){
 ```
 
 ```{r}
-fonts <- theme(text = element_text(family = "Arial", size=25),
-    plot.title = element_text(family = "Arial", size=25, face = "bold", hjust=0.5, vjust=0.5))
+fonts <- theme(text = element_text(family = "Arial", size=14),
+    plot.title = element_text(family = "Arial", size=14, face = "bold", hjust=0.5, vjust=0.5))
 ```
 
 
@@ -140,4 +140,53 @@ tsne_order_ANI90 <- tsne_RPKMF(esviritu_human_ANI90, "order", 30, "Year_cat")+
 tsne_family_ANI90 <- tsne_RPKMF(esviritu_human_ANI90, "family", 30, "Year_cat")+
   fonts
 
+```
+## Closer look on PCA components
+
+```{r}
+PCA_RPKMF <- function(data, taxa_level){
+  set.seed(2025)
+  df <- RPKMF_df(data, taxa_level)
+  df[1,1] <- NA
+  
+  df_wide <- t(df[,-1])
+  colnames(df_wide) <- df[[taxa_level]]
+  
+  prcomp1 <- prcomp(log10(df_wide+1),scale. = TRUE)
+  return(prcomp1)
+  #var_exp <- round(prcomp1$sdev^2 / sum(prcomp1$sdev^2)*100,2)
+  #return(var_exp) 
+  
+}
+```
+
+```{r}
+df <- RPKMF_df(esviritu_human, "species")
+df[1,1] <- NA
+  
+df_wide <- t(df[,-1])
+colnames(df_wide) <- df[["species"]]
+  
+pca_species <- prcomp(log10(df_wide+1),scale. = TRUE)
+
+
+point <- pca_species$x[,1:2]
+
+explained_variance <- (pca_species$sdev^2) / sum(pca_species$sdev^2)
+
+explained_variance[1:8] 
+plot(explained_variance, xlab="PC index",
+ylab="fraction of variance explained", 
+main="Variance explained by principal component")
+
+PC1_variance <- round(explained_variance[1]*100,2) 
+PC2_variance <- round(explained_variance[2]*100,2) 
+plot(point, col="red", main="PCA - human viruses, species level",
+cex=1, xlab=sprintf("PC1 %s %%", PC1_variance), ylab=sprintf("PC2 %s %%",PC2_variance)) 
+points(point[1:60,], col="blue", cex=1)
+
+legend(legend=c("2020-2021", "2024-2025"),
+fill=c("blue", "red"), 
+x="bottomright", 
+cex=0.8)
 ```
