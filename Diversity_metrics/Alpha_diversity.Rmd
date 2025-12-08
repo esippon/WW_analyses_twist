@@ -35,9 +35,6 @@ sample_metadata <- sample_metadata %>%
 ```{r}
 esviritu_human_ANI90 <- esviritu_human %>%
   filter(avg_read_identity >=0.90)
-
-esviritu_res_ANI90 <- esviritu_res %>%
-  filter(avg_read_identity >=0.90)
 ```
 
 ## Function for RPKMF value calculation (at taxa level)
@@ -58,6 +55,32 @@ RPKMF_df <- function(data, tax_level){
   return(RPKMF_df_wide)
 }
 ```
+
+```{r}
+RPKMF_df(esviritu_human, "species")[1:5,1:5]
+```
+## Function to calculate species count (or other taxa)
+
+```{r}
+summarize_tax_levels <- function(data){
+  data %>%
+    group_by(sample_ID) %>%
+    summarize(phylums=n_distinct(phylum),
+              classes=n_distinct(tclass),
+              orders=n_distinct(order),
+              families=n_distinct(family),
+              genera=n_distinct(genus),
+              species=n_distinct(species),
+              subspecies=n_distinct(subspecies),
+              .groups="drop")
+}
+```
+
+```{r}
+summarize_tax_levels(esviritu_human)$species
+```
+
+
 ## Alpha diversity calculations
 
 ```{r}
@@ -77,7 +100,8 @@ alpha_diveristy_calc <- function(data){
                                             equalize.groups = FALSE),
                   simpson_index = diversity(x=t(species_df[,-1]), 
                                             index="simpson",
-                                            equalize.groups = FALSE))
+                                            equalize.groups = FALSE),
+                  species_count = summarize_tax_levels(data)$species)
                   #chao1 = chao1(t(species_df[,-1]), taxa.row = FALSE))
   
   
@@ -87,6 +111,7 @@ alpha_diveristy_calc <- function(data){
                                     "Season", "Season_year", "reads_in_sample",
                                     "Year_cat")],
                   by="sample_ID")
+
 
   return(adiv)
   
@@ -117,26 +142,20 @@ plot_adiv_by_city <- function(adiv_data, variable){
   
   return(plot)
 }
-
-plot_adiv_by_city(alpha_div_human, "shannon_index") +
-  ylab("Shannon index")
-
-plot_adiv_by_city(alpha_div_human_ANI90, "shannon_index") +
-  ylab("Shannon index")
-
-
-plot_adiv_by_city(alpha_div_human, "simpson_index") + 
-  ylab("Simpson index")
-
-plot_adiv_by_city(alpha_div_human_ANI90, "simpson_index") + 
-  ylab("Simpson index")
-
 ```
 
 ```{r}
-save_adiv_plot <- function(data, variable, y_lab, filtered=FALSE){
-    
-  plot <- plot_adiv_by_city(data, variable) +
+save_adiv_plot <- function(data, variable, y_lab, filtered=FALSE, mode="plot"){
+
+  pal <- park_palette("DeathValley")[c(1,6)]
+  
+  plot <- ggplot(data=data, aes(x=City, y=!!sym(variable), fill=Year_cat)) +
+    geom_boxplot(position=position_dodge())+
+    guides(fill=guide_legend(title="")) +
+    scale_fill_manual(values = pal)+
+    ylab("") +
+    theme_bw() +
+    fonts +
     labs(y=paste(y_lab))
   
     if(filtered==FALSE){
@@ -145,20 +164,90 @@ save_adiv_plot <- function(data, variable, y_lab, filtered=FALSE){
       plot_name <- paste0("adiv_", variable, "_by_city_years_ANI90.jpg")
     }
   
-  ggsave(plot, 
+  if (mode=="plot"){
+    return(plot)
+  } else{
+    ggsave(plot, 
        file = here("outputs/Figures/Diversity_metrics",plot_name), 
        width = 7.2, height = 4, units = "in", dpi=300)
+  }
+  
 }
 
-save_adiv_plot(alpha_div_human, "shannon_index", "Shannon index")
+save_adiv_plot(alpha_div_human, "shannon_index", "Shannon index", mode="plot")
 save_adiv_plot(alpha_div_human_ANI90, "shannon_index", "Shannon index",
-               filtered=TRUE)
+               filtered=TRUE, mode="plot")
 
-save_adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)")
+save_adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)", mode="plot")
 save_adiv_plot(alpha_div_human_ANI90, "simpson_index_inv","Simpson index (1/D)",
-               filtered=TRUE)
+               filtered=TRUE, mode="plot")
 
-save_adiv_plot(alpha_div_human, "simpson_index", "Simpson index (1-D)")
+save_adiv_plot(alpha_div_human, "simpson_index", "Simpson index (1-D)", mode="plot")
 save_adiv_plot(alpha_div_human_ANI90, "simpson_index","Simpson index (1-D)",
-               filtered=TRUE)
+              filtered=TRUE, mode="plot")
+
+save_adiv_plot(alpha_div_human, "species_count", "Detected species", mode="save")
+save_adiv_plot(alpha_div_human_ANI90, "species_count", "Detected species",
+              filtered=TRUE, mode="save")
+```
+
+## Test alpha diversity metrics with Wilcox-test
+
+Test the difference in alpha diversity metrics 
+--> all of them c("shannon_index", "simpson_index", "species_count))
+
+```{r}
+cities <- c("Helsinki", "Kuopio", "Oulu", "Tampere", "Turku")
+city_pairs <- as.data.frame(combn(cities,2))
+
+test_index <- c("shannon_index", "simpson_index", "simpson_index_inv", "species_count")
+
+
+a_div_tests <- function(data){
+  
+  adiv_test_res <- data.frame(variable = c(),
+                            City1 = c(),
+                            City2 = c(),
+                            statistic = c(),
+                            p_value = c(),
+                            q_value= c())
+  
+  for (index in test_index){
+    tmp_res <- data.frame(
+      variable = c(),
+      City1 = c(),
+      City2 = c(),
+      statistic = c(),
+      p_value = c())
+    
+    
+    for(i in 1:10){
+      city1_data <- data %>% filter(City==city_pairs[1,i])
+      city2_data <- data %>% filter(City==city_pairs[2,i])
+
+      res <- wilcox.test(city1_data[[index]], city2_data[[index]])
+      
+      new_res <- data.frame(variable = index,
+                            City1 = city_pairs[1,i],
+                            City2 = city_pairs[2,i],
+                            statistic = res$statistic,
+                            p_value = res$p.value)
+      
+      tmp_res <- rbind(tmp_res, new_res)
+
+      #adiv_test_res <- rbind(adiv_test_res, new_res)
+
+    }
+    tmp_res$q_value <- p.adjust(tmp_res$p_value, method = "BH")
+    adiv_test_res <- rbind(adiv_test_res, tmp_res)
+  }
+  
+  return(adiv_test_res)
+}
+
+```
+
+```{r}
+a_div_tests(alpha_div_human) %>%
+  knitr::kable()
 ```
