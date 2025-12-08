@@ -1,0 +1,180 @@
+---
+title: "Beta_diversity"
+author: "Eevi Sipponen"
+date: "8-12-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libraries
+
+```{r}
+library(here)
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(vegan)
+library(nationalparkcolors)
+```
+
+# Load data
+
+```{r}
+esviritu_human <- fread(here("data", "Human_data.tsv"))
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+
+sample_metadata <- sample_metadata[!apply(sample_metadata, 1, function(row) all(is.na(row))), ]
+
+sample_metadata <- sample_metadata %>%
+  filter(!grepl("SET", sample_ID)) %>%
+  mutate(Year_cat = ifelse(grepl("^(2020|2021)", sample_ID), 
+                          "2020-2021", "2024-2025"))
+```
+
+```{r}
+esviritu_human_ANI90 <- esviritu_human %>%
+  filter(avg_read_identity >=0.90)
+```
+
+## Function for RPKMF value calculation (at taxa level)
+
+```{r}
+RPKMF_df <- function(data, tax_level){
+  RPKMF_df <- data %>%
+    group_by(sample_ID, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(RPKMF)) %>%
+    ungroup()
+  
+  #tidyr
+  RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
+                    names_from = sample_ID,
+                    values_from = RPKMF,
+                    values_fill = list(RPKMF=0))
+
+  return(RPKMF_df_wide)
+}
+```
+
+## PERMANOVA on Bray-Curtis distance
+
+```{r}
+
+bray_curtis_human <- as.data.frame(as.matrix(vegdist(t(RPKMF_df(esviritu_human, "species")[,-1]))), method="bray")
+bray_curtis_human_ANI90 <- as.data.frame(as.matrix(vegdist(t(RPKMF_df(esviritu_human_ANI90, "species")[,-1]))), method="bray")
+```
+Test the significance of city in the whole dataset
+
+```{r}
+set.seed(2025)
+
+permanova_bc_human <- adonis2(bray_curtis_human ~ City, data=sample_metadata,
+                              permutations=9999, by="margin")
+permanova_bc_human
+round(p.adjust(permanova_bc_human$`Pr(>F)`, "BH"),6)
+```
+```{r}
+set.seed(2025)
+permanova_bc_human_ANI90 <- adonis2(bray_curtis_human_ANI90 ~ City, data=sample_metadata,
+                                    permutations=9999, by="margin")
+permanova_bc_human_ANI90
+```
+
+
+Test the significance of city in separate datasets (for each year)
+
+```{r}
+bc_20_21 <- bray_curtis_human[1:60,1:60]
+bc_20_21_ANI90 <- bray_curtis_human_ANI90[1:60,1:60]
+
+
+bc_24_25 <- bray_curtis_human[61:120, 61:120]
+bc_24_25_ANI90 <- bray_curtis_human_ANI90[61:120, 61:120]
+```
+
+```{r}
+set.seed(2025)
+permanova_bc_human_20_21 <- adonis2(bc_20_21 ~ City, data=sample_metadata[1:60,],
+                                    permutations=9999, by="margin")
+permanova_bc_human_20_21
+
+permanova_bc_human_20_21_ANI90 <- adonis2(bc_20_21_ANI90 ~ City, data=sample_metadata[1:60,],
+                                          permutations=9999, by="margin")
+permanova_bc_human_20_21_ANI90
+```
+
+```{r}
+permanova_bc_human_24_25 <- adonis2(bc_24_25 ~ City, data=sample_metadata[61:120,],
+                              permutations=9999, by="margin")
+permanova_bc_human_24_25
+
+permanova_bc_human_24_25_ANI90 <- adonis2(bc_24_25_ANI90 ~ City, data=sample_metadata[61:120,],
+                              permutations=9999, by="margin")
+permanova_bc_human_24_25_ANI90
+```
+
+## PCoA plot on Bray-Curtis distance
+
+```{r PCoA-Bray-Curtis}
+set.seed(2025)
+
+plot_PCoA <- function(data, taxa_level, annot_col, annot_shape){
+
+  #calculate RPKMF df (cols species, rows samples)
+  RPKMF_df <- RPKMF_df(data, taxa_level)
+  
+  bray_curtis <- as.data.frame(as.matrix(vegdist(t(RPKMF_df[,-1]))), method="bray")
+  
+  bray_curtis$sample_ID1 <- rownames(bray_curtis)
+
+  #return(bray_curtis)
+  
+  pcoa <- cmdscale(bray_curtis[,-ncol(bray_curtis)], eig=TRUE)
+  pcoa_df <- as.data.frame(pcoa$points)
+  pcoa_df$sample_ID <- bray_curtis$sample_ID1
+
+  pcoa_df_meta <- merge(pcoa_df, sample_metadata, by="sample_ID")
+  
+  #explained variance by PC 
+  exp_var <- pcoa$eig /(sum(pcoa$eig))
+  PC1_var <- round(exp_var[1]*100, 2)
+  PC2_var <- round(exp_var[2]*100, 2)
+
+  
+  plot <- ggplot(pcoa_df_meta, aes(x = V1, y = V2, color=.data[[annot_col]],shape=.data[[annot_shape]])) +
+  geom_point(size=4) +
+  labs(x=sprintf("PCoA-1 (%s %%)", PC1_var), 
+       y= sprintf("PCoA-2 (%s %%)", PC2_var), 
+       title="PCoA Ordination") +
+    #stat_ellipse(.data[[annot_col]]) +
+  scale_color_manual(values=park_palette("DeathValley")[c(1,2,4,5,6)],
+                     name="City") +
+  scale_shape_manual(values=c(17, 16), name="Year") +
+  theme_bw()
+  
+  return(plot)
+}
+
+```
+
+
+```{r}
+beta_PCoA_human <- plot_PCoA(data=esviritu_human, taxa_level="species", 
+          annot_col = "City", annot_shape = "Year_cat") + fonts
+
+ggsave(beta_PCoA_human, 
+       file = here("outputs/Figures/Diversity_metrics","beta_PCoA_human.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+
+beta_PCoA_human_ANI90 <- plot_PCoA(data=esviritu_human_ANI90, taxa_level="species", 
+          annot_col = "City", annot_shape = "Year_cat") + fonts
+
+ggsave(beta_PCoA_human_ANI90, 
+       file = here("outputs/Figures/Diversity_metrics","beta_PCoA_human_ANI90.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+```
+
+
+                                          
