@@ -1,0 +1,164 @@
+---
+title: "Alpha diversity"
+author: "Eevi Sipponen"
+date: "8-12-2025"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libraries
+
+```{r}
+library(here)
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(vegan)
+library(fossil)
+library(nationalparkcolors)
+```
+
+# Load data
+
+```{r}
+esviritu_human <- fread(here("data", "Human_data.tsv"))
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+
+sample_metadata <- sample_metadata %>%
+  mutate(Year_cat = ifelse(grepl("^(2020|2021)", sample_ID), 
+                          "2020-2021", "2024-2025"))
+```
+
+```{r}
+esviritu_human_ANI90 <- esviritu_human %>%
+  filter(avg_read_identity >=0.90)
+
+esviritu_res_ANI90 <- esviritu_res %>%
+  filter(avg_read_identity >=0.90)
+```
+
+## Function for RPKMF value calculation (at taxa level)
+
+```{r}
+RPKMF_df <- function(data, tax_level){
+  RPKMF_df <- data %>%
+    group_by(sample_ID, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(RPKMF)) %>%
+    ungroup()
+  
+  #tidyr
+  RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
+                    names_from = sample_ID,
+                    values_from = RPKMF,
+                    values_fill = list(RPKMF=0))
+
+  return(RPKMF_df_wide)
+}
+```
+## Alpha diversity calculations
+
+```{r}
+#calculate alpha diversity metrics for species level data
+
+alpha_diveristy_calc <- function(data){
+  
+  species_df <- RPKMF_df(data, "species")
+  
+  #calculate shannon index
+  adiv <- data.frame(sample_ID=colnames(species_df[,-1]),
+                  shannon_index = diversity(x=t(species_df[,-1]), 
+                                            index="shannon",
+                                            equalize.groups = FALSE),
+                  simpson_index_inv = diversity(x=t(species_df[,-1]), 
+                                            index="invsimpson",
+                                            equalize.groups = FALSE),
+                  simpson_index = diversity(x=t(species_df[,-1]), 
+                                            index="simpson",
+                                            equalize.groups = FALSE))
+                  #chao1 = chao1(t(species_df[,-1]), taxa.row = FALSE))
+  
+  
+  #add metadata to alpha diversity 
+  adiv <-  merge(adiv, 
+                 sample_metadata[,c("sample_ID", "City", "Month_chr", "Date", 
+                                    "Season", "Season_year", "reads_in_sample",
+                                    "Year_cat")],
+                  by="sample_ID")
+
+  return(adiv)
+  
+}
+
+alpha_div_human <- alpha_diveristy_calc(esviritu_human)
+alpha_div_human_ANI90 <- alpha_diveristy_calc(esviritu_human_ANI90)
+```
+
+## Alpha diversity per city at species level
+
+```{r}
+fonts <- theme(text = element_text(family = "Arial", size=14),
+    plot.title = element_text(family = "Arial", size=14, face = "bold", hjust=0.5, vjust=0.5))
+```
+
+```{r}
+plot_adiv_by_city <- function(adiv_data, variable){
+  pal <- park_palette("DeathValley")[c(1,6)]
+  
+  plot <- ggplot(data=adiv_data, aes(x=City, y=!!sym(variable), fill=Year_cat)) +
+    geom_boxplot(position=position_dodge())+
+    guides(fill=guide_legend(title="")) +
+    scale_fill_manual(values = pal)+
+    ylab("") +
+    theme_bw() +
+    fonts
+  
+  return(plot)
+}
+
+plot_adiv_by_city(alpha_div_human, "shannon_index") +
+  ylab("Shannon index")
+
+plot_adiv_by_city(alpha_div_human_ANI90, "shannon_index") +
+  ylab("Shannon index")
+
+
+plot_adiv_by_city(alpha_div_human, "simpson_index") + 
+  ylab("Simpson index")
+
+plot_adiv_by_city(alpha_div_human_ANI90, "simpson_index") + 
+  ylab("Simpson index")
+
+```
+
+```{r}
+save_adiv_plot <- function(data, variable, y_lab, filtered=FALSE){
+    
+  plot <- plot_adiv_by_city(data, variable) +
+    labs(y=paste(y_lab))
+  
+    if(filtered==FALSE){
+      plot_name <- paste0("adiv_", variable, "_by_city_years.jpg")
+    } else{
+      plot_name <- paste0("adiv_", variable, "_by_city_years_ANI90.jpg")
+    }
+  
+  ggsave(plot, 
+       file = here("outputs/Figures/Diversity_metrics",plot_name), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+}
+
+save_adiv_plot(alpha_div_human, "shannon_index", "Shannon index")
+save_adiv_plot(alpha_div_human_ANI90, "shannon_index", "Shannon index",
+               filtered=TRUE)
+
+save_adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)")
+save_adiv_plot(alpha_div_human_ANI90, "simpson_index_inv","Simpson index (1/D)",
+               filtered=TRUE)
+
+save_adiv_plot(alpha_div_human, "simpson_index", "Simpson index (1-D)")
+save_adiv_plot(alpha_div_human_ANI90, "simpson_index","Simpson index (1-D)",
+               filtered=TRUE)
+```
