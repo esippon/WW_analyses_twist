@@ -75,6 +75,7 @@ summarize_tax_levels <- function(data, col, taxa_level){
               genera=n_distinct(genus),
               species=n_distinct(species_det),
               subspecies=n_distinct(subspecies_det),
+              Accession=n_distinct(Accession),
               .groups="drop") %>%
     mutate(total_value=!!sym(taxa_level)) %>%
     rename(category=!!sym(col)) %>%
@@ -137,21 +138,39 @@ fonts <- theme(text = element_text(family = "Arial", size=14),
 ```{r function-to-save-pie-plots}
 save_pie_plot <- function(data, data_type="RPKMF", variable, legend_title, filtered=FALSE){
   if (data_type=="species_count"){
-    plot <- host_pie(summarize_tax_levels(data, variable, "species"))+
+    plot <- host_pie(summarize_tax_levels(data, variable, "Accession")) +
             guides(fill = guide_legend(title = legend_title)) +
             labs(title="Species count distibution between hosts") +
             fonts +
             theme(legend.key.size = unit(0.8, "lines"))
     
     if(filtered==FALSE){
-      plot_name <- paste0("species_pie_", variable, ".jpg")
+      plot_name <- paste0("species_pie_", variable, "2.jpg")
     } else{
       plot_name <- paste0("species_pie_", variable, "_ANI90.jpg")
     }
     
     ggsave(plot, 
        file = here("outputs/Figures/Virome_community",plot_name), 
-       width = 4, height = 2.8, units = "in", dpi=300)
+       width = 7.2, height = 4.5, units = "in", dpi=300)
+    
+  }
+  if (data_type=="accession"){
+    plot <- host_pie(summarize_tax_levels(data, variable, "Accession")) +
+            guides(fill = guide_legend(title = legend_title)) +
+            labs(title="Accession count distibution between hosts") +
+            fonts +
+            theme(legend.key.size = unit(0.8, "lines"))
+    
+    if(filtered==FALSE){
+      plot_name <- paste0("accession_pie_", variable, ".jpg")
+    } else{
+      plot_name <- paste0("accession_pie_", variable, "_ANI90.jpg")
+    }
+    
+    ggsave(plot, 
+       file = here("outputs/Figures/Virome_community",plot_name), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
     
   } else{
     plot <- host_pie(sum_cat_top10(data, variable, "true_RPKMF"))+
@@ -160,16 +179,30 @@ save_pie_plot <- function(data, data_type="RPKMF", variable, legend_title, filte
             fonts +
             theme(legend.key.size = unit(0.8, "lines"))
     if(filtered==FALSE){
-      plot_name <- paste0("RPKMF_pie_", variable, ".jpg")
+      plot_name <- paste0("RPKMF_pie_", variable, "2.jpg")
     } else{
       plot_name <- paste0("RPKMF_pie_", variable, "_ANI90.jpg")
     }
     
     ggsave(plot, 
        file = here("outputs/Figures/Virome_community", plot_name), 
-       width = 4, height = 2.8, units = "in", dpi=300)
+      width = 7.2, height = 4.5, units = "in", dpi=300)
   }
 }
+```
+
+```{r accession-distribution-plots}
+#unfiltered data
+save_pie_plot(esviritu_res, "accession", "host_kingdom", "Host Kingdom")
+save_pie_plot(esviritu_res, "accession", "host_order", "Host Order")
+save_pie_plot(esviritu_res, "accession", "host_genus", "Host Genus")
+save_pie_plot(esviritu_res, "accession", "host_species", "Host Species")
+
+# ANI90 filtered data
+save_pie_plot(esviritu_res_ANI90, "accession", "host_kingdom", "Host Kingdom", TRUE)
+save_pie_plot(esviritu_res_ANI90, "accession", "host_order", "Host Order", TRUE)
+save_pie_plot(esviritu_res_ANI90, "accession", "host_genus", "Host Genus", TRUE)
+save_pie_plot(esviritu_res_ANI90, "accession", "host_species", "Host Species", TRUE)
 ```
 
 ```{r species-count-plots}
