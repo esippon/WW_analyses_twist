@@ -1,7 +1,8 @@
 ---
 title: "Differential_abundance_analysis"
 author: "Eevi Sipponen"
-date: "5-12-25"
+date: "`r Sys.Date()`"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -23,10 +24,10 @@ library(pheatmap)
 # Load data
 
 ```{r}
-esviritu_human <- fread(here("data", "Human_data.tsv"))
+esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV1.tsv"))
+esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
 
-esviritu_human_ANI90 <- esviritu_human %>%
-  filter(avg_read_identity >=0.90)
+esviritu_res_non_human <- esviritu_res[esviritu_res$host_species != "Homo sapiens", ]
 
 sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
 ```
@@ -35,12 +36,12 @@ sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec="
 ```{r per-sample-taxa-level-RPKMF-df}
 RPKMF_df <- function(data, tax_level){
   RPKMF_df <- data %>%
-    group_by(sample_ID, !!sym(tax_level)) %>%
-    summarize(RPKMF = sum(RPKMF)) %>%
+    group_by(sample_id, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(true_rpkmf)) %>%  #HUOM MUUTETTU TULOSTEN AJON JÄLKEEN
     ungroup()
   
   RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
-                    names_from = sample_ID,
+                    names_from = sample_id,
                     values_from = RPKMF,
                     values_fill = list(RPKMF=0))
 
@@ -71,17 +72,14 @@ maaslin_in <- function(data, taxa_level){
 
 }
 
-maaslin_in_hspecies <- maaslin_in(esviritu_human, "species")
-maaslin_in_hspecies_ANI90 <- maaslin_in(esviritu_human_ANI90, "species")
+maaslin_in_hspecies <- maaslin_in(esviritu_res_human, "species")
 
-
+maaslin_in_non_hspecies <- maaslin_in(esviritu_res_non_human, "species")
 #check that the input data looks right
 #typeof(maaslin_in_hspecies)
 #class(maaslin_in_hspecies)
 #str(maaslin_in_hspecies)
 maaslin_in_hspecies[1:5,1:5]
-
-maaslin_in_hspecies_ANI90[1:5,1:5]
 ```
 
 Format the input metadata file
@@ -108,54 +106,114 @@ maaslin_in_meta
 Test difference between years
 No maaslin_comparison pairwise test needed with two groups
 
-```{r}
+```{r HUMAN-VIRUSES}
 set.seed(2025)
 
-#human_species_year_input_model <- maaslin3(input_data = maaslin_in_hspecies,
-#                        input_metadata = maaslin_in_meta,
-#                        output = 'MaAsLin3_Human_Years',
-#                        formula = '~ Year_cat + reads_in_sample',
-#                        normalization = 'TSS',
-#                        transform = 'LOG',
-#                        min_prevalence = 3/120,
-#                        min_abundance = 0.0001,
-#                        augment = TRUE,
-#                        standardize = TRUE,
-#                        max_significance = 0.1,
-#                        plot_associations = TRUE,
-#                        plot_summary_plot = TRUE,
-#                        median_comparison_abundance = TRUE,
-#                        median_comparison_prevalence = FALSE,
-#                        cores = 3)
+filt2.5_prev_H0_0 <- maaslin3(input_data = maaslin_in_hspecies,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_filt2.5_human_years_prevH0_0',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        #filter out species detected in less than 2.5% of samples
+                        min_prevalence = 3/120, 
+                        min_abundance = 0,
+                        augment = TRUE,
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        median_comparison_prevalence = FALSE,
+                        cores = 3)
 
-#human_species_year_input_model_ANI90 <- maaslin3(input_data = maaslin_in_hspecies_ANI90,
-#                        input_metadata = maaslin_in_meta,
-#                        output = 'MaAsLin3_Human_Years_ANI90',
-#                        formula = '~ Year_cat + reads_in_sample',
-#                        normalization = 'TSS',
-#                        transform = 'LOG',
-#                        min_prevalence = 3/120,
-#                        min_abundance = 0.0001,
-#                        augment = TRUE,
-#                        standardize = TRUE,
-#                        max_significance = 0.1,
-#                        plot_associations = TRUE,
-#                        plot_summary_plot = TRUE,
-#                        median_comparison_abundance = TRUE,
-#                        median_comparison_prevalence = FALSE,
-#                        cores = 3)
+filt2.5_prev_H0_med <- maaslin3(input_data = maaslin_in_hspecies,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_filt2.5_human_years_prevH0_med',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        #filter out species detected in less than 2.5% of samples
+                        min_prevalence = 3/120,
+                        min_abundance = 0,
+                        augment = TRUE,
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        median_comparison_prevalence = TRUE,
+                        cores = 3)
 ```
+```{r NON-HUMAN-VIRUSES}
+set.seed(2025)
 
+non_human_filt2.5_prev_H0_0 <- maaslin3(input_data = maaslin_in_non_hspecies,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_filt2.5_non_human_years_prevH0_0',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        #filter out species detected in less than 2.5% of samples
+                        min_prevalence = 3/120, 
+                        min_abundance = 0,
+                        augment = TRUE,
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        median_comparison_prevalence = FALSE,
+                        cores = 3)
+
+non_human_filt2.5_prev_H0_med <- maaslin3(input_data = maaslin_in_non_hspecies,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_filt2.5_non_human_years_prevH0_med',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        #filter out species detected in less than 2.5% of samples
+                        min_prevalence = 3/120,
+                        min_abundance = 0,
+                        augment = TRUE,
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        median_comparison_prevalence = TRUE,
+                        cores = 3)
+
+#test for only abundance, the ones above give different results for abundance
+non_human_filt2.5_abund <- maaslin3(input_data = maaslin_in_non_hspecies,
+                        input_metadata = maaslin_in_meta,
+                        output = 'MaAsLin3_filt2.5_non_human_years_abund',
+                        formula = '~ Year_cat + reads_in_sample',
+                        normalization = 'TSS',
+                        transform = 'LOG',
+                        #filter out species detected in less than 2.5% of samples
+                        min_prevalence = 3/120,
+                        min_abundance = 0,
+                        warn_prevalence = FALSE,
+                        augment = TRUE,
+                        evaluate_only ="abundance",
+                        standardize = TRUE,
+                        max_significance = 0.1,
+                        plot_associations = TRUE,
+                        plot_summary_plot = TRUE,
+                        median_comparison_abundance = TRUE,
+                        cores = 3)
+```
 Save the DAA results for later use: 
 ```{r}
 #save(esviritu_human, esviritu_human_ANI90, sample_metadata, maaslin_in_hspecies, maaslin_in_hspecies_ANI90, maaslin_in_meta, human_species_year_input_model, human_species_year_input_model_ANI90, file = "DAA_years_vars.RData")
 
-load("DAA_years_vars.RData")
+#load("DAA_years_vars.RData")
 ```
 
 
 
-Plot volcano plots from the significant results
+## Plot volcano plots from the significant results
 
 ```{r}
 plot_volcano <- function(data){
@@ -217,7 +275,7 @@ volcano_species_years_ANI90 <- plot_volcano(human_species_year_input_model_ANI90
 ```
 
 
-Plot heatmap of the significant results
+## Plot heatmap of the significant results
 
 ```{r}
 plot_heatmap <- function(data, original_data, test){
@@ -246,7 +304,7 @@ plot_heatmap <- function(data, original_data, test){
                 "Differentially prevalent species")
   print(main_title)
   #plot heatmap
-  pal <- colorRampPalette(c(pal2[2], pal2[1], pal2[6]))(100)
+  pal <- colorRampPalette(c(pal[6], "white", pal[1]))(100)
   
   plot <- pheatmap(log2(plot_data+1),
            color = pal,
@@ -265,34 +323,47 @@ plot_heatmap <- function(data, original_data, test){
 ```
 
 ```{r}
-hm_DA_species <- plot_heatmap(human_species_year_input_model$fit_data_abundance$results, 
-                              maaslin_in_hspecies, "a") 
-#ggsave(hm_DA_species, 
-#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DA_species2.jpg"), 
-#       width = 7.2, height = 4, units = "in", dpi=300)
+p1 <- plot_heatmap(filt2.5_prev_H0_0$fit_data_abundance$results, 
+                              maaslin_in_hspecies, "a")
+ggsave(p1, 
+       file = here("outputs", "hm_filt2.5_abundance.jpg"), 
+       width = 10, height = 4, units = "in", dpi=300)
 
+p2 <- plot_heatmap(filt2.5_prev_H0_0$fit_data_prevalence$results, 
+                              maaslin_in_hspecies, "p")
+ggsave(p2, 
+       file = here("outputs", "hm_filt2.5_prev_H0_0_prevalence.jpg"), 
+       width = 10, height = 6, units = "in", dpi=300)
 
+plot_heatmap(filt2.5_prev_H0_med$fit_data_abundance$results, 
+                              maaslin_in_hspecies, "a")
 
-hm_DA_species_ANI90 <- plot_heatmap(human_species_year_input_model_ANI90$fit_data_abundance$results, 
-                                    maaslin_in_hspecies_ANI90, "a") 
-#ggsave(hm_DA_species_ANI90, 
-#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DA_species_ANI902.jpg"), 
-#        width = 7.2, height = 4, units = "in", dpi=300)
-
+p3 <- plot_heatmap(filt2.5_prev_H0_med$fit_data_prevalence$results, 
+                              maaslin_in_hspecies, "p")
+ggsave(p3, 
+       file = here("outputs", "hm_filt2.5_prev_H0_med_prevalence.jpg"), 
+       width = 10, height = 6, units = "in", dpi=300)
 ```
 
+NON-HUMAN VIRUSES
+
 ```{r}
-hm_DP_species <- plot_heatmap(human_species_year_input_model$fit_data_prevalence$results, 
-                              maaslin_in_hspecies, "p")
+p1 <- plot_heatmap(non_human_filt2.5_prev_H0_0$fit_data_prevalence$results, 
+                              maaslin_in_non_hspecies, "p")
+ggsave(p1, 
+       file = here("outputs", "hm_filt2.5_prev_H0_0_prevalence_non_human.jpg"), 
+       width = 10, height = 6, units = "in", dpi=300)
 
-#ggsave(hm_DP_species, 
-#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DP_species2.jpg"), 
-#       width = 7.2, height = 6.5, units = "in", dpi=300)
+p2 <- plot_heatmap(non_human_filt2.5_prev_H0_med$fit_data_prevalence$results, 
+                              maaslin_in_non_hspecies, "p")
+ggsave(p2, 
+       file = here("outputs", "hm_filt2.5_prev_H0_med_prevalence_non_human.jpg"), 
+       width = 10, height = 6, units = "in", dpi=300)
 
-hm_DP_species_ANI90 <- plot_heatmap(human_species_year_input_model_ANI90$fit_data_prevalence$results, 
-                                    maaslin_in_hspecies_ANI90, "p")
+p3 <- plot_heatmap(non_human_filt2.5_abund$fit_data_abundance$results, 
+                              maaslin_in_non_hspecies, "a")
+ggsave(p3, 
+       file = here("outputs", "hm_filt2.5_abundance_non_human.jpg"), 
+       width = 10, height = 6, units = "in", dpi=300)
 
-#ggsave(hm_DP_species_ANI90, 
-#       file = here("outputs/Figures/Differential_Abundance_Analysis", "hm_DP_species_ANI902.jpg"), 
-#       width = 7.2, height = 6.5, units = "in", dpi=300)
 ```
