@@ -402,8 +402,8 @@ d_coords <- make_even_grid(k, xmin =  0, xmax =  1, ymin = -1, ymax =  0, margin
 Then randomly sample right number of coordinates for each panel
 
 ```{r}
+#set.seed(5)
 set.seed(5)
-
 a_sample <- a_coords[sample(nrow(a_coords), nrow(a)), , drop = FALSE]
 a$x <- a_sample$x
 a$y <- a_sample$y
@@ -411,7 +411,7 @@ a$y <- a_sample$y
 b_sample <- b_coords[sample(nrow(b_coords), nrow(b)), , drop = FALSE]
 b$x <- b_sample$x
 b$y <- b_sample$y
-
+set.seed(10)
 c_sample <- c_coords[sample(nrow(c_coords), nrow(c)), , drop = FALSE]
 c$x <- c_sample$x
 c$y <- c_sample$y
@@ -431,33 +431,6 @@ data_all$qval_size <- 1/(data_all$qval_individual_readj)
 data_all$more_abundant_in <- ifelse(data_all$coef < 0, "2020-2021", "2024-2025")
 ```
 
-
-```{r}
-margin <- 1  # adjust as needed — bigger = more central points
-set.seed(20)
-a$x <- runif(nrow(a), min = -50 + margin, max = -margin)
-a$y <- runif(nrow(a), min =  margin,     max = 50 - margin)
-a$category <- "pathogenic_acute"
-
-b$x <- runif(nrow(b), min =  margin,     max = 50 - margin)
-b$y <- runif(nrow(b), min =  margin,     max = 50 - margin)
-b$category <- "pathogenic_persistent"
-
-c$x <- runif(nrow(c), min = -50 + margin, max = -margin)
-c$y <- runif(nrow(c), min = -50 + margin, max = -margin)
-c$category <- "commensal_acute"
-
-d$x <- runif(nrow(d), min =  margin,     max = 50 - margin)
-d$y <- runif(nrow(d), min = -50 + margin, max = -margin)
-d$category <- "commensal_persistent"
-
-
-data_all <- rbind(a,b,c,d)
-data_all$qval_size <- 1/(data_all$qval_individual_readj)
-
-data_all$more_abundant_in <- ifelse(data_all$coef < 0, "2020-2021", "2024-2025")
-
-```
 
 ```{r}
 pal <- park_palette("DeathValley")
