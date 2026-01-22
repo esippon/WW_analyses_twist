@@ -1,0 +1,232 @@
+---
+title: "Pie plots for accession counts and RPKMF values - Host and tropism distributions"
+author: "Eevi Sipponen"
+---
+
+# Load libraries
+
+```{r}
+library(data.table)
+library(here)
+library(ggplot2)
+library(dplyr)
+#library(paletteer)
+#library(ggthemes)
+#library(showtext)
+```
+
+# Load data
+
+```{r}
+esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
+esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```
+
+
+
+# Plot pie charts for accession count and RPKMF values distribution by host
+
+Create a color palette to use:
+```{r}
+cat_colors <- c("Sus" = "#3E8C6E",
+            "Others" = "#F4A261",
+            "Homo" = "#7B71B6",
+            "Gallus" = "#06D6A0",
+            "Bos" = "#EF476F",
+            "unknown" = "#264653",
+            "Canis" = "#E06666",
+            "Felis" = "#FFD166",
+            "Hipposideros" = "#F77F00",
+            "Culex" = "#118AB2",
+            "Cucurbita" = "#D62828",
+            "Capsicum" = "#8ECAE6",
+            "Columba" = "#FFB5A7",
+            "Rattus" = "#2A9D8F",
+            "Equus" = "#90BE6D",
+
+            "Enteric" = "#7B71B6",
+            "Hematotropic"= "#FFD166",
+            "Mucocutaneous" = "#3E8C6E",
+            "Respiratory" = "#F4A261",
+            "Systemic" = "#EF476F",
+            "Unknown" = "#E06666",
+            "Urinary/Renal" = "#06D6A0")
+```
+
+
+## RPKMF & species count - pie chart
+
+```{r functions-for-pie-charts}
+summarize_tax_levels <- function(data, col, taxa_level){
+   #'@param data = dataframe to work with
+   #'@param col = column to group the data by, wrt what to calculate taxa
+   #'@param taxa_level = what taxa level to look for
+   #'Function to calculate the number of unique taxa in selected host level. 
+   #'Arrange the categories/groups and select the top 10 based on the sum value. 
+   #'Move others to category "Others" as well as any values with missing categories. 
+   #'Give each category a label for plotting with the sum value and proportion on the total value
+  data %>%
+    group_by(!!sym(col)) %>%
+    summarize(phylums=n_distinct(phylum),
+              classes=n_distinct(tclass),
+              orders=n_distinct(order),
+              families=n_distinct(family),
+              genera=n_distinct(genus),
+              species=n_distinct(species),
+              subspecies=n_distinct(subspecies),
+              Accession=n_distinct(accession),
+              .groups="drop") %>%
+    mutate(total_value=!!sym(taxa_level)) %>%
+    rename(category=!!sym(col)) %>%
+    arrange(desc(total_value)) %>%
+    mutate(category = ifelse(row_number() > 11 | category=="", "Others", category)) %>%
+    group_by(category) %>%
+    summarize(total_value=sum(total_value), .groups="drop") %>%
+    mutate(proportion = 100 * total_value / sum(total_value),
+         label =paste0(category, " (", round(total_value,2), " - ",
+                        round(proportion, 1),"%)")) %>%
+    arrange(desc(total_value))
+  
+}
+
+sum_cat_top10 <- function(data, col, val){
+    #'@param data = dataframe to work with
+   #'@param col = column to group the data by, wrt what to calculate the values
+   #'@param val = colname of the value to calculate (RPKMF or something else)
+   #'Function to calculate the number of unique taxa in selected host level. 
+   #'Arrange the categories/groups and select the top 10 based on the sum value. 
+   #'Move others to category "Others" as well as any values with missing categories. 
+   #'Give each category a label for plotting with the sum value and proportion on the total value
+  data %>%
+    group_by(!!sym(col)) %>%
+    summarize(total_value=sum(!!sym(val)), .groups="drop") %>%
+    rename(category = !!sym(col)) %>%
+    arrange(desc(total_value)) %>%
+    mutate(category = ifelse(row_number() > 10 | category=="", "Others", category)) %>%
+    group_by(category) %>%
+    summarise(total_value = sum(total_value), .groups = "drop")%>% 
+    mutate(proportion = 100 * total_value / sum(total_value),
+         label =paste0(category, " (", round(total_value,2), " - ",
+                        round(proportion, 1),"%)"),
+         category=category) %>%
+    arrange(desc(total_value))
+  
+}
+
+host_pie <- function(data){
+  #'@param data = data from sum_cat_top10 or summarize_tax_levels
+  #'plot pie chart on that data, color by category and name the categories based on label
+  n_cat <- length(unique(data$category))
+  data$label <- factor(data$label, levels = data$label)
+  data$category <- factor(data$category, levels = data$category[order(data$label)])
+ # return(data)
+  
+  data %>%
+  ggplot(data=., aes(x="", y=total_value, fill=category)) +
+  geom_bar(stat="identity", width=0.1) +
+  scale_fill_manual(values=cat_colors,
+                    labels = data$label,
+                    #breaks=data$label,
+                    #limits=data$label,
+                    name="", 
+                    drop=FALSE) +
+  #scale_fill_viridis_d(option = "D",
+   #                  labels = data$label) +
+  coord_polar("y", start=0) +
+    theme_void() +
+  theme(legend.key.size = unit(1.1, "lines"),
+        legend.text = element_text(size=14), 
+        plot.margin = margin(0, 0, 0, 0)) 
+}
+```
+
+Plot pie plots for host genera distribution - whole data
+
+```{r}
+accession_pie_genus <- host_pie(summarize_tax_levels(esviritu_res, "host_genus", "Accession"))
+accession_pie_genus
+
+RPKMF_pie_genus <- host_pie(sum_cat_top10(esviritu_res, "host_genus", "true_rpkmf"))
+RPKMF_pie_genus
+
+#ggsave(Accession_pie_genus, 
+#       file = here("outputs/Figures/final_figures","Accession_pie_genus.tiff"), 
+#       width = 7.2, height = 4.5, units = "in", dpi=300)
+ 
+#ggsave(RPKMF_pie_genus, 
+#       file = here("outputs/Figures/final_figures","RPKMF_pie_genus.tiff"), 
+#       width = 7.2, height = 4.5, units = "in", dpi=300)
+```
+Sanity check to see if the legend is right:
+```{r}
+esviritu_res %>%
+  filter(host_species=="Homo sapiens") %>%
+  summarize(accessions=n_distinct(accession))
+```
+
+## Plot pie plots for human data, distribtuion of tropism based on 
+accession counts and RPKMF values - divided by years
+
+```{r}
+samples_20_21 <- sample_metadata %>%
+  filter(Year_cat=="2020-2021") %>%
+  pull(sample_ID)
+
+samples_24_25 <- sample_metadata %>%
+  filter(Year_cat=="2024-2025") %>%
+  pull(sample_ID)
+
+esviritu_res_human_20_21 <- esviritu_res_human %>%
+  filter(sample_id %in% samples_20_21)
+
+esviritu_res_human_24_25 <- esviritu_res_human %>%
+  filter(sample_id %in% samples_24_25)
+```
+
+
+```{r}
+# Accession count pie plots
+accession_pie_tropism_20_21 <- host_pie(summarize_tax_levels(esviritu_res_human_20_21, 
+                                                             "tropism_broad", "Accession"))
+accession_pie_tropism_20_21
+#ggsave(accession_pie_tropism_20_21, 
+#       file = here("outputs/Figures/final_figures","accession_pie_tropism_20_21.tiff"), 
+#       width = 7.2, height = 4.5, units = "in", dpi=300)
+
+accession_pie_tropism_24_25 <- host_pie(summarize_tax_levels(esviritu_res_human_24_25, 
+                                                             "tropism_broad", "Accession"))
+accession_pie_tropism_24_25
+#ggsave(accession_pie_tropism_24_25, 
+#       file = here("outputs/Figures/final_figures","accession_pie_tropism_24_25.tiff"), 
+#       width = 7.2, height = 4.5, units = "in", dpi=300)
+```
+```{r}
+esviritu_res_human_24_25 %>%
+  filter(host_species=="Homo sapiens",
+         tropism_broad=="Enteric") %>%
+  summarize(accessions=n_distinct(accession))
+```
+
+```{r}
+#RPKMF pie plots
+
+RPKMF_pie_tropism_20_21 <- host_pie(sum_cat_top10(esviritu_res_human_20_21, 
+                                                  "tropism_broad", "true_rpkmf"))
+RPKMF_pie_tropism_20_21
+#ggsave(RPKMF_pie_tropism_20_21, 
+#       file = here("outputs/Figures/final_figures","RPKMF_pie_tropism_20_21.tiff"), 
+#       width = 7.2, height = 4.5, units = "in", dpi=300)
+
+RPKMF_pie_tropism_24_25 <- host_pie(sum_cat_top10(esviritu_res_human_24_25, 
+                                                  "tropism_broad", "true_rpkmf"))
+RPKMF_pie_tropism_24_25
+#ggsave(RPKMF_pie_tropism_24_25, 
+#       file = here("outputs/Figures/final_figures","RPKMF_pie_tropism_24_25.tiff"), 
+#       width = 7.2, height = 4.5, units = "in", dpi=300)
+```
+
+
+
+
