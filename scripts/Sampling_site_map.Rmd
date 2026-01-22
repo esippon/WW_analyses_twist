@@ -1,0 +1,168 @@
+---
+title: "Sampling locations and corresponding municipalities and population served"
+author: "Eevi Sipponen"
+---
+
+```{r}
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(ggspatial)
+library(here)
+```
+
+
+```{r}
+#get municipalities for the sampling year 2021
+muni <- geofi::get_municipalities(year = 2021)
+
+#transform the geometry to EPSG:3067 (Projected coordinate system for Finland)
+muni_3067 <- st_transform(muni, 3067)
+
+#list the municipalities to color in the map
+fill_municipalities <- c("Helsinki", "Järvenpää", "Kerava", "Mäntsälä",
+                         "Pornainen", "Sipoo", "Tuusula", "Vantaa",
+                         "Kuopio", "Ii", "Muhos", "Oulu", "Utajärvi",
+                         "Kangasala", "Lempäälä", "Pirkkala", "Tampere",
+                         "Aura", "Kaarina", "Lieto","Marttila", "Mynämäki", 
+                         "Naantali","Nousiainen", "Oripää", "Paimio", "Pöytyä", 
+                         "Raisio","Rusko", "Turku", "Masku")
+
+muni_3067$munip_interest <- ifelse(muni_3067$nimi %in% fill_municipalities, "Yes","No")
+```
+
+Plot the base plot
+```{r}
+p1 <- ggplot(muni_3067, aes(fill = munip_interest)) +
+  scale_fill_manual(values=c("Yes" = "#514289", "No" ="grey82")) +
+  geom_sf(colour = scales::alpha("white", 1/3)) +
+  annotation_scale(location = "bl", width_hint = 0.25, unit_category = "metric", style="ticks") +
+  annotation_north_arrow(location = "br",
+                         height = unit(1, "cm"),
+                         width = unit(1, "cm"),
+                         style = north_arrow_fancy_orienteering) +
+  coord_sf() +
+  guides(fill = "none") +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_blank())
+
+```
+
+Add city annotation labels to the base plot
+```{r}
+#Helsinki
+H_name <- "Pornainen"
+
+H_pt <- muni_3067 %>%
+  filter(.data[["nimi"]] == H_name) %>%
+  st_point_on_surface() %>%
+  st_coordinates() %>%
+  as.data.frame()
+names(H_pt) <- c("x", "y")
+
+H_x <- H_pt$x + 100000
+H_y <- H_pt$y + 80000
+
+
+#Kuopio
+K_name <- "Kuopio"
+
+K_pt <- muni_3067 %>%
+  filter(.data[["nimi"]] == K_name) %>%
+  st_point_on_surface()%>%
+  st_coordinates() %>%
+  as.data.frame()
+names(K_pt) <- c("x", "y")
+
+K_x <- K_pt$x + 120000
+K_y <- K_pt$y + 40000 
+
+#Oulu
+O_name <- "Oulu"
+
+O_pt <- muni_3067 %>%
+  filter(.data[["nimi"]] == O_name) %>%
+  st_point_on_surface() %>%
+  st_coordinates() %>%
+  as.data.frame()
+names(O_pt) <- c("x", "y")
+
+O_x <- O_pt$x - 140000
+O_y <- O_pt$y
+
+
+#Tampere
+TA_name <- "Tampere"
+
+TA_pt <- muni_3067 %>%
+  filter(.data[["nimi"]] == TA_name) %>%
+  st_point_on_surface() %>%
+  st_coordinates() %>%
+  as.data.frame()
+names(TA_pt) <- c("x", "y")
+
+TA_x <- TA_pt$x - 80000
+TA_y <- TA_pt$y + 100000
+
+#Turku
+TU_name <- "Mynämäki"
+
+TU_pt <- muni_3067 %>%
+  filter(.data[["nimi"]] == TU_name) %>%
+  st_point_on_surface() %>%
+  st_coordinates() %>%
+  as.data.frame()
+names(TU_pt) <- c("x", "y")
+
+TU_x <- TU_pt$x - 110000
+TU_y <- TU_pt$y + 50000
+
+
+
+p2 <- p1 +
+  annotate("segment",
+           x = H_x, y = H_y,
+           xend = H_pt$x, yend = H_pt$y,
+           linewidth = 0.3, color = "black")+
+  annotate("label",
+           x = H_x, y = H_y,
+           label = "Helsinki\n860,000", size = 3, fill = "white") +
+  annotate("segment",
+           x = K_x, y = K_y,
+           xend = K_pt$x, yend = K_pt$y,
+           linewidth = 0.3, color = "black") +
+
+  annotate("label",
+           x = K_x, y = K_y,
+           label = "Kuopio\n91,000", size = 3, fill = "white") +
+  annotate("segment",
+           x = O_x, y = O_y,
+           xend = O_pt$x, yend = O_pt$y,
+           linewidth = 0.3, color = "black") +
+
+  annotate("label",
+           x = O_x, y = O_y,
+           label = "Oulu\n200,000", size = 3, fill = "white") +
+  annotate("segment",
+           x = TA_x, y = TA_y,
+           xend = TA_pt$x, yend = TA_pt$y,
+           linewidth = 0.3, color = "black") +
+
+  annotate("label",
+           x = TA_x, y = TA_y,
+           label = "Tampere\n200,000", size = 3, fill = "white") +
+  annotate("segment",
+           x = TU_x, y = TU_y,
+           xend = TU_pt$x, yend = TU_pt$y,
+           linewidth = 0.3, color = "black") +
+
+  annotate("label",
+           x = TU_x, y = TU_y,
+           label = "Turku\n300,000", size = 3, fill = "white") 
+
+#ggsave(p2, file = here("outputs", "sampling_locations_purple.tiff"), width=3, height=5, dpi=300)
+```
+
