@@ -1,0 +1,38 @@
+---
+title: "Rhinovirus_cases"
+---
+Load the case data
+```{r}
+rhino <- read.csv(here("data", "Rhinovirus_cases.csv"), sep=";", header=TRUE)
+```
+
+```{r}
+library(here)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+pal <- c("#7B71B6", "#E06666")
+
+rhino_cases <- rhino %>%
+  mutate(Month=factor(Month, levels=c(4:12,1:3))) %>%
+  ggplot(data=., aes(x=Month, y=cases, group=Year_cat)) +
+  geom_line(aes(color=Year_cat), linewidth = 1.5) +
+    scale_color_manual(values=c("2020-2021"=pal[1], "2024-2025"=pal[2]), name="") +
+    
+    labs(y="Cases (N)", x="") +
+    scale_x_discrete(labels = c("4"="April", "5"="May", "6"="June", 
+                                 "7"="July", "8"="Aug.", "9"="Sept.", 
+                                 "10"="Oct.","11"="Nov.", 
+                                 "12"="Dec.", "1"="Jan.",
+                                 "2"="Feb.", "3"="March")) +
+    theme_bw() +
+    theme(axis.text.x = element_text(size = 12),
+          legend.title = element_text(""),
+          legend.text = element_text(size=12))
+
+#ggsave(rhino_cases, 
+#       file = here("outputs/Figures/final_figures", "rhino_cases.tiff"), 
+#       width = 7.2, height = 4, units = "in", dpi=300)
+```
