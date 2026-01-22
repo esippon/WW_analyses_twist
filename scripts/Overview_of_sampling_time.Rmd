@@ -1,0 +1,275 @@
+---
+title: "Overview of sampling_time"
+author: "Eevi Sipponen"
+---
+
+## Load libraries
+```{r}
+library(tidyr)
+library(dplyr)
+library(here)
+library(ggplot2)
+library(data.table)
+library(DescTools)
+```
+
+
+## Load data
+
+```{r}
+esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
+esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```
+
+## Function for RPKMF value calculation (at taxa level)
+
+```{r}
+RPKMF_df <- function(data, tax_level){
+  RPKMF_df <- data %>%
+    group_by(sample_id, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(true_rpkmf)) %>%
+    ungroup()
+  
+  #tidyr
+  RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
+                    names_from = sample_id,
+                    values_from = RPKMF,
+                    values_fill = list(RPKMF=0))
+
+  return(RPKMF_df_wide)
+}
+```
+
+## Function to calculate species count (or other taxa)
+
+```{r}
+summarize_tax_levels <- function(data){
+  data %>%
+    group_by(sample_id) %>%
+    summarize(phylums=n_distinct(phylum),
+              classes=n_distinct(tclass),
+              orders=n_distinct(order),
+              families=n_distinct(family),
+              genera=n_distinct(genus),
+              species=n_distinct(species),
+              subspecies=n_distinct(subspecies),
+              .groups="drop")
+}
+```
+
+
+## Change in RPKMF during the sampling period
+
+```{r}
+RPKMF_sum_data <- function(data, taxa_level, band_type){
+  
+  RPKMF_data <- RPKMF_df(data, taxa_level)
+
+  RPKMF_data <- as.data.frame(rowSums(t(RPKMF_data[, -1])))
+  RPKMF_data$sample_ID <- rownames(RPKMF_data)
+  colnames(RPKMF_data)[1] <- "value"
+    
+  
+  RPKMF_data_meta <- merge(RPKMF_data, sample_metadata[, c("sample_ID", "Year_month", 
+                                                     "Year_cat", "City", "Month",
+                                                     "Month_chr")])
+
+  if (band_type=="min_max"){ 
+  RPKMF_data_sum <- RPKMF_data_meta %>%
+    group_by(Year_cat, Month_chr) %>%
+    summarise(median_value = median(value),
+              min_value = min(value),
+              max_value = max(value),
+              .groups = "drop")%>%
+  complete(Year_cat, Month_chr, 
+           fill = list(median_value = 0,
+                       min_value  = 0,
+                       max_value  = 0))
+  } else{
+    RPKMF_data_sum <- RPKMF_data_meta %>%
+    group_by(Year_cat, Month_chr) %>%
+    summarize(values=value,
+              median_value =  MedianCI(x=values, method="boot")[["median"]],
+              min_value = MedianCI(x=values, method="boot")[["lwr.ci"]],
+              max_value = MedianCI(x=values, method="boot")[["upr.ci"]],
+              .groups = "drop") %>%
+    complete(Year_cat, Month_chr, 
+            fill = list(median_value = 0,
+                        min_value  = 0,
+                        max_value  = 0))
+  }
+  
+  RPKMF_data_sum$Month_chr <- factor(RPKMF_data_sum$Month_chr,
+                                       levels=c("April", "May", "June","July",
+                                                "August", "September", "October",
+                                                "November", "December","January",
+                                                "February", "March"))
+
+  return(RPKMF_data_sum)
+}
+```
+
+
+```{r, warning=FALSE}
+
+RPKMF_data_human_95CI <- RPKMF_sum_data(esviritu_res_human, "species", band_type="CI")
+RPKMF_data_human_minmax <- RPKMF_sum_data(esviritu_res_human, "species", band_type = "min_max")
+
+RPKMF_data_enteric_95CI <- RPKMF_sum_data(esviritu_res_human[esviritu_res_human$tropism_broad=="Enteric",], "species", band_type="CI")
+RPKMF_data_enteric_minmax <- RPKMF_sum_data(esviritu_res_human[esviritu_res_human$tropism_broad=="Enteric",], "species", band_type="min_max")
+```
+
+```{r, warning=FALSE}
+pal <- c("#7B71B6", "#E06666")
+
+
+plot_RPKMF <- function(data){
+
+    plot <- ggplot(data, aes(x = Month_chr, color=Year_cat, group=Year_cat)) +
+            geom_ribbon(aes(ymin = min_value, ymax = max_value, 
+                  fill=Year_cat), alpha = 0.3, linewidth=0.2) +
+            geom_line(aes(y = median_value), size = 1) +
+            scale_color_manual(values=c("2020-2021"=pal[1], "2024-2025"=pal[2]), name="") +
+            scale_fill_manual(values=c("2020-2021"=pal[1], "2024-2025"=pal[2]), name="") +
+            labs(y="RPKMF", x="") +
+            scale_x_discrete(labels = c( April="April", May="May", June="June", 
+                                         July="July", August="Aug.", September="Sept.", 
+                                         October="Oct.",November="Nov.", 
+                                         December="Dec.", January="Jan.",
+                                         February="Feb.", March="March")) +
+            theme_bw() +
+            ylim(0,830) +
+            theme(axis.text.x = element_text(size = 12),
+                  legend.position = "none")
+  
+  return(plot)
+}
+
+#plot_RPKMF(RPKMF_data_human_minmax)
+RPKMF_human_viruses_95CI <- plot_RPKMF(RPKMF_data_human_95CI)
+RPKMF_human_viruses_95CI
+#ggsave(RPKMF_human_viruses_95CI, 
+#       file = here("outputs/Figures/final_figures", "RPKMF_human_viruses_95CI.tiff"), 
+#       width = 7.2, height = 4, units = "in", dpi=300)
+
+#plot_RPKMF(RPKMF_enteric_minmax)
+RPKMF_enteric_95CI <- plot_RPKMF(RPKMF_data_enteric_95CI)
+RPKMF_enteric_95CI
+#ggsave(RPKMF_enteric_95CI, 
+#       file = here("outputs/Figures/final_figures", "RPKMF_enteric_95CI.tiff"), 
+#       width = 7.2, height = 4, units = "in", dpi=300)
+#plot_RPKMF(RPKMF_enteric)
+
+
+```
+
+## Change in species count during the sampling period
+
+```{r}
+species_count_data <- function(data, taxa_level, band_type){
+  s_count <- summarize_tax_levels(data)[,c("sample_id", taxa_level)]
+
+  s_count_meta <- merge(s_count, sample_metadata[, c("sample_ID", "Year_month", 
+                                                     "Year_cat", "City", "Month",
+                                                     "Month_chr")],
+                        by.x="sample_id", by.y="sample_ID")
+
+  
+  if (band_type=="min_max"){ 
+  s_count_sum <- s_count_meta %>%
+    group_by(Year_cat, Month_chr) %>%
+    summarise(median_value = median(species),
+              min_value = min(species),
+              max_value = max(species),
+              .groups = "drop")%>%
+  complete(Year_cat, Month_chr, 
+           fill = list(median_value = 0,
+                       min_value  = 0,
+                       max_value  = 0))
+  } else{
+    s_count_sum <- s_count_meta %>%
+    group_by(Year_cat, Month_chr) %>%
+    summarize(values=species,
+              median_value =  MedianCI(x=values, method="boot")[["median"]],
+              min_value = MedianCI(x=values, method="boot")[["lwr.ci"]],
+              max_value = MedianCI(x=values, method="boot")[["upr.ci"]],
+              .groups = "drop") %>%
+    complete(Year_cat, Month_chr, 
+            fill = list(median_value = 0,
+                        min_value  = 0,
+                        max_value  = 0))
+  }
+  
+
+  
+  s_count_sum$Month_chr <- factor(s_count_sum$Month_chr,
+                                       levels=c("April", "May", "June","July",
+                                                "August", "September", "October",
+                                                "November", "December","January",
+                                                "February",  "March"))
+
+  return(s_count_sum)
+}
+```
+
+
+```{r}
+s_count_data_human_95CI <- species_count_data(esviritu_res_human, "species", band_type="CI")
+s_count_data_human_minmax <- species_count_data(esviritu_res_human, "species", band_type = "min_max")
+
+s_count_data_mucocutaneous_95CI <- species_count_data(esviritu_res_human[esviritu_res_human$tropism_broad=="Mucocutaneous",], "species", band_type="CI")
+s_count_data_mucocutaneous_minmax <- species_count_data(esviritu_res_human[esviritu_res_human$tropism_broad=="Mucocutaneous",], "species", band_type="min_max")
+```
+
+```{r, warning=FALSE}
+
+pal <- c("#7B71B6", "#E06666")
+plot_species_count <- function(data){
+    plot <- ggplot(data, aes(x = Month_chr, color=Year_cat, group=Year_cat)) +
+      
+            geom_ribbon(aes(ymin = min_value, ymax = max_value, color=Year_cat, 
+                  fill=Year_cat), alpha = 0.3, linewidth=0.1) +
+            geom_line(aes(y = median_value), size = 1) +
+            scale_color_manual(values=c("2020-2021"=pal[1], "2024-2025"=pal[2]), name="") +
+            scale_fill_manual(values=c("2020-2021"=pal[1], "2024-2025"=pal[2]), name="") +
+            labs(y="Number of detected species") +
+            scale_x_discrete(labels = c( April="April", May="May", June="June", 
+                                         July="July", August="Aug.", September="Sept.", 
+                                         October="Oct.",November="Nov.", 
+                                         December="Dec.", January="Jan.",
+                                         February="Feb.", March="March")) +
+            theme_bw() +
+            labs(x="") +
+            ylim(0,99) +
+            theme(axis.text.x = element_text(size = 12),
+                  legend.position = "none")
+    
+    return(plot)
+}
+```
+
+```{r}
+species_count_human_95CI <- plot_species_count(s_count_data_human_95CI)
+species_count_human_95CI
+#ggsave(species_count_human_95CI, 
+#       file = here("outputs/Figures/final_figures", "species_count_human_95CI.tiff"), 
+#       width = 7.2, height = 4, units = "in", dpi=300)
+#plot_species_count(s_count_human_minmax)
+
+
+species_count_mucocutaneous_95CI <- plot_species_count(s_count_data_mucocutaneous_95CI)
+species_count_mucocutaneous_95CI
+#ggsave(species_count_mucocutaneous_95CI, 
+#       file = here("outputs/Figures/final_figures", "species_count_mucocutaneous_95CI.tiff"), 
+#       width = 7.2, height = 4, units = "in", dpi=300)
+#plot_species_count(s_count_mucocutaneous_minmax)
+```
+
+
+
+
+
+
+
