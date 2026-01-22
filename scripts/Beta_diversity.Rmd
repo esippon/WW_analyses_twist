@@ -1,0 +1,156 @@
+---
+title: "Beta diversity"
+author: "Eevi Sipponen"
+---
+
+# Load libraries
+
+```{r}
+library(here)
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(vegan)
+```
+
+# Load data
+
+```{r}
+esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
+colnames(esviritu_res)[1] <- "sample_ID"
+
+esviritu_human <- esviritu_res %>%
+  filter(host_species=="Homo sapiens")
+
+sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+sample_metadata <- sample_metadata[!apply(sample_metadata, 1, function(row) all(is.na(row))), ]
+
+```
+
+## Function for RPKMF value calculation (at taxa level)
+
+```{r}
+RPKMF_df <- function(data, tax_level){
+  RPKMF_df <- data %>%
+    group_by(sample_ID, !!sym(tax_level)) %>%
+    summarize(RPKMF = sum(true_rpkmf)) %>%
+    ungroup()
+  
+  RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
+                    names_from = sample_ID,
+                    values_from = RPKMF,
+                    values_fill = list(RPKMF=0))
+
+  return(RPKMF_df_wide)
+}
+```
+
+## PERMANOVA on Bray-Curtis distance
+
+```{r}
+bray_curtis_human <- as.data.frame(as.matrix(vegdist(t(RPKMF_df(esviritu_human, "species")[,-1]))), method="bray")
+```
+## Test the significance of YEAR - whole dataset
+```{r}
+set.seed(2025)
+permanova_bc_human_year <- adonis2(bray_curtis_human ~ Year_cat, data=sample_metadata,
+                              permutations=999, by="margin")
+
+permanova_bc_human_year 
+```
+
+## Test the significance of CITY - whole dataset
+
+```{r}
+set.seed(2025)
+
+permanova_bc_human <- adonis2(bray_curtis_human ~ City, data=sample_metadata,
+                              permutations=999, by="margin")
+permanova_bc_human
+```
+
+## Test the significance of CITY - within each year
+
+```{r}
+bc_20_21_human <- bray_curtis_human[1:60,1:60]
+
+bc_24_25_human <- bray_curtis_human[61:120, 61:120]
+```
+
+```{r}
+set.seed(2025)
+permanova_bc_human_20_21 <- adonis2(bc_20_21_human ~ City, data=sample_metadata[1:60,],
+                                    permutations=999, by="margin")
+permanova_bc_human_20_21
+```
+
+```{r}
+permanova_bc_human_24_25 <- adonis2(bc_24_25_human ~ City, data=sample_metadata[61:120,],
+                              permutations=999, by="margin")
+permanova_bc_human_24_25
+```
+
+## PCoA plot on Bray-Curtis distance
+
+```{r PCoA-Bray-Curtis}
+set.seed(2025)
+
+plot_PCoA <- function(data, taxa_level, annot_col, annot_shape){
+
+  #calculate RPKMF df (cols species, rows samples)
+  RPKMF_df <- RPKMF_df(data, taxa_level)
+  
+  bray_curtis <- as.data.frame(as.matrix(vegdist(t(RPKMF_df[,-1]))), method="bray")
+  
+  bray_curtis$sample_ID1 <- rownames(bray_curtis)
+
+  
+  pcoa <- cmdscale(bray_curtis[,-ncol(bray_curtis)], eig=TRUE)
+  pcoa_df <- as.data.frame(pcoa$points)
+  pcoa_df$sample_ID <- bray_curtis$sample_ID1
+
+  pcoa_df_meta <- merge(pcoa_df, sample_metadata, by="sample_ID")
+  
+  #explained variance by PC 
+  exp_var <- pcoa$eig /(sum(pcoa$eig))
+  PC1_var <- round(exp_var[1]*100, 2)
+  PC2_var <- round(exp_var[2]*100, 2)
+
+  
+  plot <- ggplot(pcoa_df_meta, aes(x = V1, y = V2, color=.data[[annot_col]],shape=.data[[annot_shape]])) +
+  geom_point(size=4) +
+  labs(x=sprintf("PCoA-1 (%s %%)", PC1_var), 
+       y= sprintf("PCoA-2 (%s %%)", PC2_var)) +
+    #stat_ellipse(.data[[annot_col]]) +
+  scale_color_manual(values= pal <- c("#7B71B6","#E06666"),
+                     name="Year") +
+  scale_shape_manual(values=c(17, 16, 15, 18, 3), name="City") +
+  theme_bw()
+
+}
+
+```
+
+```{r}
+beta_PCoA_human_season_year <- plot_PCoA(data=esviritu_human, taxa_level="species", 
+          annot_col = "Year_cat", annot_shape = "City") +
+  theme(legend.position="bottom", legend.box="vertical", legend.margin=margin(),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size=14))
+
+beta_PCoA_human_season_year
+#ggsave(beta_PCoA_human_season_year, 
+#       file = here("outputs/Figures/final_figures","beta_PCoA_human_season_year.tiff"), 
+#       width = 7.2, height = 5, units = "in", dpi=300)
+```
+
+
+
+
+
+
+
+
+
+
