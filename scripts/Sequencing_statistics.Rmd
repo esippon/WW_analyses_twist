@@ -159,13 +159,8 @@ v_reads_all <- summarize_viral_reads(esviritu_res)
 ```
 
 ```{r}
-v_reads_all_plot <- plot_grid(plot_vread_percentage_all(v_reads_all),
-            plot_vread_number_all(v_reads_all))
-v_reads_all_plot
-
-#ggsave(v_reads_all_plot, 
-#       file = here("outputs/Figures/final_figures","v_reads_years_all.tiff"), 
-#       width = 8, height = 4, units = "in", dpi=300)
+plot_vread_percentage_all(v_reads_all)
+plot_vread_number_all(v_reads_all)
 ```
 Test the difference between the proportion and number of viral reads between years
 ```{r}
@@ -382,6 +377,7 @@ chisq.test(m)
 ```
 
 --> 2020-2021 significantly more assemblies with coverage <10%
+
 
 
 
