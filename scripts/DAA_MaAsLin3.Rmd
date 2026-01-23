@@ -1,8 +1,6 @@
 ---
 title: "DAA_MaAsLin3"
 author: "Eevi Sipponen"
-date: "`r Sys.Date()`"
-output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -498,6 +496,7 @@ quadrant <- ggplot(data_all) +
 #        width = 6, height = 4, dpi=300)
 
 ```
+
 
 
 
