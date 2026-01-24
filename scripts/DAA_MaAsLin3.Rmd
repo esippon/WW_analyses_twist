@@ -499,11 +499,3 @@ quadrant <- ggplot(data_all) +
 
 
 
-
-
-
-
-
-
-
-
