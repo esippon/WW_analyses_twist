@@ -1,8 +1,6 @@
 ---
 title: "Descriptive_statistics"
 author: "Eevi Sipponen"
-date: "`r Sys.Date()`"
-output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -19,10 +17,6 @@ library(dplyr)
 
 library(tidyr)
 library(vegan)
-
-library(cowplot)
-#library(showtext)
-#library(paletteer)
 ```
 
 # Load data
@@ -62,7 +56,6 @@ plot_rarecurve_plot <- function(data, taxa_level){
 
   rarecurve <-  rarecurve(t(rarecurve_data), step = 500, 
                           label=FALSE, cex=0.2, tidy = TRUE)
-  #return(rarecurve)
   
   colnames(rarecurve) <- c("Site", "Sample", "Taxa_level")
   rarecurve$cat <- ifelse(grepl("^(2020|2021)", as.character(rarecurve$Site)), "2020-2021", "2024-2025")
@@ -75,8 +68,9 @@ plot_rarecurve_plot <- function(data, taxa_level){
     facet_wrap(~cat) +
   labs(x="Sequences",
        y="Species") +
-  theme_bw(base_size = 16, base_family = "Arial") +
-  theme(legend.position = "none")
+  theme_bw() +
+  theme(legend.position = "none",
+        text = element_text(size=16))
   
   return(plot)
 }
@@ -113,18 +107,19 @@ summarize_viral_reads <- function(data){
 pal <- c("#7B71B6", "#E06666")
 #plot viral read proportion of all samples
 plot_vread_percentage_all <- function(data){
+  
   mean_val <- round(mean(data$viral_reads_percentage),3)
   median_val <- round(median(data$viral_reads_percentage),3)
+  
   ggplot(data=data, aes(x="",y=viral_reads_percentage, fill=Year_cat)) +
     scale_fill_manual(values=pal) +
     geom_boxplot() +
     theme_bw() +
-    labs(y="Percentage",
-         x="") +
+    labs(y="Percentage", x="") +
     theme(axis.text.y = element_text(size=12),
           title = element_text(size=12),
           legend.position = "none",
-        strip.text = element_text(size=14)) + 
+          strip.text = element_text(size=14)) + 
     facet_grid(~Year_cat)+
     scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1, 1.25),
                        labels = function(x) paste0(x, "%")) 
@@ -133,6 +128,7 @@ plot_vread_percentage_all <- function(data){
 
 #plot number of viral reads for all samples
 plot_vread_number_all <- function(data){
+  
   mean_val <- format(mean(data$total_mapped), 
                         scientific = T, digits = 6)
   median_val <- format(median(data$total_mapped), 
@@ -142,8 +138,7 @@ plot_vread_number_all <- function(data){
     scale_fill_manual(values=pal) +
     geom_boxplot() +
     theme_bw() +
-    labs(y = "Reads aligned to viral genomes",
-         x="") +
+    labs(y = "Reads aligned to viral genomes", x="") +
     facet_grid(~Year_cat)+
     theme(axis.text.x = element_text(angle=45, hjust=1),
           axis.text.y = element_text(size=12),
@@ -159,14 +154,24 @@ v_reads_all <- summarize_viral_reads(esviritu_res)
 ```
 
 ```{r}
+v_reads_all_plot <- plot_grid(plot_vread_percentage_all(v_reads_all),
+            plot_vread_number_all(v_reads_all))
+v_reads_all_plot
+
 plot_vread_percentage_all(v_reads_all)
 plot_vread_number_all(v_reads_all)
+
+#ggsave(v_reads_all_plot, 
+#       file = here("outputs/Figures/final_figures","v_reads_years_all.tiff"), 
+#       width = 8, height = 4, units = "in", dpi=300)
 ```
 Test the difference between the proportion and number of viral reads between years
 ```{r}
 wilcox.test(viral_reads_percentage ~ Year_cat, data = v_reads_all)
 wilcox.test(total_mapped ~ Year_cat, data = v_reads_all)
 ```
+
+
 ```{r}
 mean(v_reads_all$viral_reads_percentage)
 mean(v_reads_all$total_mapped)
@@ -299,19 +304,6 @@ cov_cats_years <- calc_coverage_cats_years(esviritu_res) %>%
                                                         "10%-50%",
                                                         "50%-80%",
                                                         "> 80%")))
-
-
-
-over50_cov_20_21 <- cov_cats_years %>%
-  filter(Year_cat=="2020-2021",
-         cov_category == "50%-80%" | cov_category == "> 80%")
-
-over50_cov_24_25 <- cov_cats_years %>%
-  filter(Year_cat=="2024-2025",
-         cov_category == "50%-80%" | cov_category == "> 80%")
-
-#chisq.test(over50_cov_24_25$seqs, over50_cov_20_21$seqs)
-
 ```
 
 Test the difference between years in the number of assemblies with coverage > 50%
@@ -377,8 +369,4 @@ chisq.test(m)
 ```
 
 --> 2020-2021 significantly more assemblies with coverage <10%
-
-
-
-
 
