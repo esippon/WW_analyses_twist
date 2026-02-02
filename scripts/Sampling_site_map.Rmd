@@ -43,11 +43,10 @@ p1 <- ggplot(muni_3067, aes(fill = munip_interest)) +
                          style = north_arrow_fancy_orienteering) +
   coord_sf() +
   guides(fill = "none") +
-  theme(
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    panel.grid = element_blank(),
-    panel.background = element_blank())
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        panel.background = element_blank())
 
 ```
 
