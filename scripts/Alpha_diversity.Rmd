@@ -164,6 +164,7 @@ Global tests for different alpha diversity metrics with Kruskal-Walls
 
 -> whole dataset (2020-2021 + 2024-2025)
 ```{r}
+set.seed(2025)
 #kruskal test on the whole dataset (both years)
 kruskal.test(species_count ~ City, data=alpha_div_human)
 kruskal.test(shannon_index ~ City, data=alpha_div_human)
@@ -172,6 +173,7 @@ kruskal.test(simpson_index_inv ~ City, data=alpha_div_human)
 
 -> 2020-2021 only
 ```{r}
+set.seed(2025)
 #kruskal test on 2020-2021 data
 kruskal.test(species_count ~ City, data=alpha_div_human[alpha_div_human$Year_cat=="2020-2021",])
 kruskal.test(shannon_index ~ City, data=alpha_div_human[alpha_div_human$Year_cat=="2020-2021",])
@@ -180,6 +182,7 @@ kruskal.test(simpson_index_inv ~ City, data=alpha_div_human[alpha_div_human$Year
 
 -> 2024-2025 only
 ```{r}
+set.seed(2025)
 #kruskal test on 2024-2025 data
 kruskal.test(species_count ~ City, data=alpha_div_human[alpha_div_human$Year_cat=="2024-2025",])
 kruskal.test(shannon_index ~ City, data=alpha_div_human[alpha_div_human$Year_cat=="2024-2025",])
@@ -237,20 +240,19 @@ a_div_tests <- function(data){
 
 ```
 
-```{r}
+```{r, warning=FALSE}
 #test the whole dataset for between city differences
-a_div_tests(alpha_div_human) %>%
-  knitr::kable()
+#a_div_tests(alpha_div_human) %>%
+#  knitr::kable()
 
 #test only the 2020-2021 dataset
 a_div_tests(alpha_div_human[alpha_div_human$Year_cat=="2020-2021",]) %>%
   knitr::kable()
 
 #test only the 2024-2025 dataset
-a_div_tests(alpha_div_human[alpha_div_human$Year_cat=="2024-2025",]) %>%
-  knitr::kable()
+#a_div_tests(alpha_div_human[alpha_div_human$Year_cat=="2024-2025",]) %>%
+#  knitr::kable()
 ```
-
 
 ## Test the difference in species count between years 2020-2021 and 2024-2025
 
@@ -258,8 +260,8 @@ Count the mean number of species (all viruses) per sample in yearly datasets
 ```{r}
 taxa_count_all <- as.data.frame(summarize_tax_levels(esviritu_res))
 #check that the sample order is as expected
-taxa_count_all$sample_ID[1:60]
-taxa_count_all$sample_ID[61:120]
+taxa_count_all$sample_id[1:60]
+taxa_count_all$sample_id[61:120]
 
 
 species_20_21 <- taxa_count_all[1:60, "species"]
@@ -267,25 +269,8 @@ species_20_21 <- taxa_count_all[1:60, "species"]
 species_24_25 <- taxa_count_all[61:120, "species"]
 
 wilcox.test(species_20_21, species_24_25)
+
+
+mean(species_20_21)
+mean(species_24_25)
 ```
-
-```{r}
-esviritu_res_human %>%
-  filter(set_avg_read_identity < 0.9) %>%
-  group_by(subspecies) %>%
-  summarize(accessions = n_distinct(accession)) %>%
-  arrange(desc(accessions))
-
-
-esviritu_res_human %>%
-  filter(avg_read_identity < 0.9) %>%
-  group_by(subspecies) %>%
-  summarize(accessions = n_distinct(accession)) %>%
-  arrange(desc(accessions))
-```
-
-
-
-
-
-
