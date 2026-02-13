@@ -3,6 +3,7 @@ title: "Sampling locations and corresponding municipalities and population serve
 author: "Eevi Sipponen"
 ---
 
+Load libraries
 ```{r}
 library(sf)
 library(dplyr)
@@ -164,4 +165,5 @@ p2 <- p1 +
 
 #ggsave(p2, file = here("outputs", "sampling_locations_purple.tiff"), width=3, height=5, dpi=300)
 ```
+
 
