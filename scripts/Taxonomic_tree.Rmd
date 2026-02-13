@@ -3,6 +3,7 @@ title: "Taxonomic tree - all viruses and only human viruses"
 author: "Eevi Sipponen"
 ---
 
+# Load libraries
 ```{r}
 library(ggplot2)
 library(data.table)
@@ -20,15 +21,12 @@ library(ade4)
 
 ```{r}
 esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
-
 colnames(esviritu_res)[1] <- "sample_ID"
 
 esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
 
 sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
 ```
-
-## Taxonomic tree for all detected viruses
 
 # TAX TREE FOR ALL DETECTED VIRUSES
 ## Hierarchical tax table for each detected species
@@ -95,7 +93,6 @@ freq_info_dt <- species_meta_dt %>%
 
 ```
 
-
 ```{r, warning=FALSE}
 tree_all <- ggtree::ggtree(taxo_phylo, layout = "daylight",branch.length = "scaled",
              color="grey40", size=0.2)
@@ -109,9 +106,6 @@ freq_info_dt$total_number <- as.numeric(freq_info_dt$total_number)
 Family level annotations based on these:
 geom_text(aes(label=node))
 View(tree_all@data)
-
-
-TARKISTA VIELÄ ANNOTAATIOT ENNEN KUN TEKEE LOPULLISEN VERSION!
 
 ```{r detection-freq-annotation}
 #pal <- park_palette("DeathValley")
@@ -324,7 +318,6 @@ annots <- get_clade_annot_commands(taxo_phylo_h, species_family_df, tree_h)
 
 ```
 
-
 ```{r detection-freq-year-annotation}
 
 tax_tree_year <- tree_h %<+% freq_info_dt + 
@@ -386,6 +379,7 @@ tax_tree_year
 #ggsave(tax_tree_year, file= here("outputs/Figures/final_figures", 
 #                                 "tax_tree_human_years.tiff"), width=8, height=6, dpi=300)
 ```
+
 
 
 
