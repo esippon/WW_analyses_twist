@@ -144,23 +144,17 @@ adiv_plot <- function(data, variable, y_lab){
 
 adiv_plot(alpha_div_human, "shannon_index", "Shannon index")
 
-
 adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)")
-
 
 #save_adiv_plot(alpha_div_human, "simpson_index", "Simpson index (1-D)", mode="plot")
 
-
 adiv_plot(alpha_div_human, "species_count", "Detected species (N)")
-
 ```
 
 ## Test alpha diversity metrics with Wilcox-test
 
-
 ### Kruskal-Walls tests
 Global tests for different alpha diversity metrics with Kruskal-Walls
-
 
 -> whole dataset (2020-2021 + 2024-2025)
 ```{r}
@@ -274,3 +268,4 @@ wilcox.test(species_20_21, species_24_25)
 mean(species_20_21)
 mean(species_24_25)
 ```
+
