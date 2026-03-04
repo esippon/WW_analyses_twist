@@ -6,6 +6,7 @@ Repository contains the code and data used in associated article. Input data is 
 
 Repository contains:
 - Esviritu_HostDiseaseGenotypeV5.tsv: EsViritu results with made annotations and references
-- MaAsLin3_significant_species_annotations.tsv: Life-style and infection type annotations for found significant results
+- MaAsLin3_significant_species.tsv: Life-style and infection type annotations for significant species identified in MaAsLin3 analysis
+- Rhinovirus_cases.tsv: Clinical case data for rhinovirus A
 - sample_metadata.csv: associated metadata for each sample
-- scripts: scripts for producing the analysis and figures presented in the article divided by themes
+- scripts: scripts for producing the analysis and figures presented
