@@ -14,7 +14,7 @@ library(data.table)
 library(here)
 library(ggplot2)
 library(dplyr)
-
+library(cowplot)
 library(tidyr)
 library(vegan)
 ```
@@ -369,4 +369,5 @@ chisq.test(m)
 ```
 
 --> 2020-2021 significantly more assemblies with coverage <10%
+
 
