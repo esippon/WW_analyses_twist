@@ -93,7 +93,7 @@ alpha_diveristy_calc <- function(data){
   #add metadata to alpha diversity 
   adiv <-  merge(adiv, 
                  sample_metadata[,c("sample_ID", "City", "Month_chr", "Date", 
-                                    "Season", "Season_year", "reads_in_sample",
+                                    "reads_in_sample",
                                     "Year_cat")],
                   by="sample_ID")
 
@@ -268,4 +268,5 @@ wilcox.test(species_20_21, species_24_25)
 mean(species_20_21)
 mean(species_24_25)
 ```
+
 
