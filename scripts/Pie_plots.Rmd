@@ -60,13 +60,6 @@ cat_colors <- c("Sus" = "#3E8C6E",
 
 ```{r functions-for-pie-charts}
 summarize_tax_levels <- function(data, col, taxa_level){
-   #'@param data = dataframe to work with
-   #'@param col = column to group the data by, wrt what to calculate taxa
-   #'@param taxa_level = what taxa level to look for
-   #'Function to calculate the number of unique taxa in selected host level. 
-   #'Arrange the categories/groups and select the top 10 based on the sum value. 
-   #'Move others to category "Others" as well as any values with missing categories. 
-   #'Give each category a label for plotting with the sum value and proportion on the total value
   data %>%
     group_by(!!sym(col)) %>%
     summarize(phylums=n_distinct(phylum),
@@ -92,13 +85,6 @@ summarize_tax_levels <- function(data, col, taxa_level){
 }
 
 sum_cat_top10 <- function(data, col, val){
-    #'@param data = dataframe to work with
-   #'@param col = column to group the data by, wrt what to calculate the values
-   #'@param val = colname of the value to calculate (RPKMF or something else)
-   #'Function to calculate the number of unique taxa in selected host level. 
-   #'Arrange the categories/groups and select the top 10 based on the sum value. 
-   #'Move others to category "Others" as well as any values with missing categories. 
-   #'Give each category a label for plotting with the sum value and proportion on the total value
   data %>%
     group_by(!!sym(col)) %>%
     summarize(total_value=sum(!!sym(val)), .groups="drop") %>%
@@ -116,24 +102,17 @@ sum_cat_top10 <- function(data, col, val){
 }
 
 host_pie <- function(data){
-  #'@param data = data from sum_cat_top10 or summarize_tax_levels
-  #'plot pie chart on that data, color by category and name the categories based on label
   n_cat <- length(unique(data$category))
   data$label <- factor(data$label, levels = data$label)
   data$category <- factor(data$category, levels = data$category[order(data$label)])
- # return(data)
-  
+
   data %>%
   ggplot(data=., aes(x="", y=total_value, fill=category)) +
   geom_bar(stat="identity", width=0.1) +
   scale_fill_manual(values=cat_colors,
                     labels = data$label,
-                    #breaks=data$label,
-                    #limits=data$label,
                     name="", 
                     drop=FALSE) +
-  #scale_fill_viridis_d(option = "D",
-   #                  labels = data$label) +
   coord_polar("y", start=0) +
     theme_void() +
   theme(legend.key.size = unit(1.1, "lines"),
@@ -226,6 +205,7 @@ RPKMF_pie_tropism_24_25
 #       file = here("outputs/Figures/final_figures","RPKMF_pie_tropism_24_25.tiff"), 
 #       width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
+
 
 
 
