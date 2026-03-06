@@ -10,7 +10,6 @@ library(data.table)
 library(here)
 library(stringr)
 library(dplyr)
-
 library(tidyr)
 library(ggtree)
 library(ade4)
@@ -61,30 +60,20 @@ Group RPKMF by sample_ID/species
 ```{r}
 species_meta_dt <- merge(esviritu_res, sample_metadata,
                          by = "sample_ID") %>%
-  #group by year category (2020-2021 and 2024-2025)
   group_by(Year_cat) %>%
-  #count total_samples as the number of unique sample names in year category
   mutate(total_samples = n_distinct(sample_ID)) %>%
-  # ungroup by year category
   ungroup() %>%
-  #count how many distinct samples contained each species (n)
   group_by(species, Year_cat, total_samples) %>%
   summarize(n = n_distinct(sample_ID)) %>%
-  #freq= proportion of samples (60) that contained each species
   mutate(freq = n / total_samples) %>%
   ungroup() %>%
-  #fill the possible missing combinations with 0
   complete(nesting(Year_cat, total_samples), species,
            fill=list(n=0, freq=0))
 
 freq_info_dt <- species_meta_dt %>%
   group_by(species) %>%
-  #total_number = total number of samples where the species was found
-  #h_freq= relative frequency per year (frequencies add up to 1)
   mutate(total_number = sum(n),
          h_freq = freq/ sum(freq)) %>%
-  #get the relative requency of a species wrt 2024-2025
-  #1 if was detected onöy in 24/25, 0 if only in 20/21
   filter(Year_cat=="2024-2025") %>%
   select(species, total_number, h_freq) %>%
   ungroup() %>%
@@ -203,8 +192,6 @@ tax_tree
 #                            "tax_tree_all.tiff"), width=8, height=6, dpi=300)
 ```
 
-----------------------------------------------------------------------------------
-
 # TAX TREE FOR HUMAN VIRUSES
 ## Hierarchical tax table for each detected species
 
@@ -238,30 +225,20 @@ Group RPKMF by sample_ID/species
 ```{r}
 species_meta_dt <- merge(esviritu_res_human, sample_metadata,
                          by = "sample_ID") %>%
-  #group by year category (2020-2021 and 2024-2025)
   group_by(Year_cat) %>%
-  #count total_samples as the number of unique sample names in year category
   mutate(total_samples = n_distinct(sample_ID)) %>%
-  # ungroup by year category
   ungroup() %>%
-  #count how many distinct samples contained each species (n)
   group_by(species, Year_cat, total_samples) %>%
   summarize(n = n_distinct(sample_ID)) %>%
-  #freq= proportion of samples (60) that contained each species
   mutate(freq = n / total_samples) %>%
   ungroup() %>%
-  #fill the possible missing combinations with 0
   complete(nesting(Year_cat, total_samples), species,
            fill=list(n=0, freq=0))
 
 freq_info_dt <- species_meta_dt %>%
   group_by(species) %>%
-  #total_number = total number of samples where the species was found
-  #h_freq= relative frequency per year (frequencies add up to 1)
   mutate(total_number = sum(n),
          h_freq = freq/ sum(freq)) %>%
-  #get the relative requency of a species wrt 2024-2025
-  #1 if was detected onöy in 24/25, 0 if only in 20/21
   filter(Year_cat=="2024-2025") %>%
   select(species, total_number, h_freq) %>%
   ungroup() %>%
@@ -379,6 +356,7 @@ tax_tree_year
 #ggsave(tax_tree_year, file= here("outputs/Figures/final_figures", 
 #                                 "tax_tree_human_years.tiff"), width=8, height=6, dpi=300)
 ```
+
 
 
 
