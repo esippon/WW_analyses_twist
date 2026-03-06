@@ -159,10 +159,8 @@ Save the DAA results for later use:
 load("DAA_years_vars.RData")
 ```
 
-MaAsLin3 does FDR correction over all abundance or prevalence relationships 
-(separately). P-values are now adjusted only within the variable of interest,
-Year_cat to gain more meaningful results. This is done to abundance and 
-prevalence separately, as the default FDR corrections.
+Do FDR correction wihtin the variable of interest, Year_cat to abundance and 
+prevalence separately.
 
 Significant results are features that satisfy the following criteria:
 (1) re-adjusted qval_individual < 0.10
@@ -255,14 +253,15 @@ plot_heatmap <- function(data, original_data){
  
   plot_data <- log2(plot_data+1)
   scale_opt <- "row"
-  breaks_opt <- seq(-2, 2, length.out = 101)
-  color_opt <- colorRampPalette(c("#3E8A6E", "white", "#F77F00"))(100) #inferno(100)
+  breaks_opt <- seq(0, 2, length.out = 101)
+  color_opt <- colorRampPalette(c("#FFD166","#D62828"))(100)
 
-  #reorder the plot data to get the rows in nice order
   plot_data_reordered <- plot_data[match(order_vec, rownames(plot_data)), , drop = FALSE]
   
-  #return(plot_data)
-  plot <- pheatmap(plot_data_reordered,
+  plot_data2 <- plot_data_reordered
+  plot_data2[plot_data2 == 0] <- NA
+  
+  plot <- pheatmap(plot_data2,
            color = color_opt,
            cluster_rows = FALSE,
            cluster_cols = FALSE,
@@ -274,11 +273,11 @@ plot_heatmap <- function(data, original_data){
            annotation_col = annot_col,
            annotation_row = row_annot,
            annotation_colors = annot_colors,
+           na_col="white",
            annotation_names_row = FALSE,
            breaks = breaks_opt)
 
   return(plot)
-  
 }
 
 ```
@@ -298,38 +297,6 @@ hm_DA_species
 
 ## Quadrant plot of signficant MaAsLin results 
 
-A summary quadrant plot of MaAsLin results shows viral traits, with the x-axis indicating acute versus persistent viruses and the y-axis indicating pathogenic versus commensial classification; red denotes viruses more prevalent and abundant in 2020–2021 and violet in 2024–2025, while point size reflects the q-value.
-
-```{r}
-pathogenic_comm_species <-  fread(here("data", "Human_data.tsv"))
-
-pathogenic_comm_species <- unique(pathogenic_comm_species[, c("species", "subspecies","Life-style")])
-colnames(pathogenic_comm_species) <- c("species","subspecies", "Life_style")
-
-acute_persistent_species <- fread(here("MaAsLin3_significant_species_Acute_Persistent_Unknown.txt"), sep=",", header=FALSE)
-
-colnames(acute_persistent_species) <- c("feature", "inf_type")
-
-
-signif_all <- rbind(signif_abundance, signif_prevalence)
-
-#signif_all_annot <- merge(signif_all, pathogenic_comm_species,
-#                          by.x="feature", by.y="species", all.x = FALSE,
-#                            all.y=FALSE) %>%
-#                        distinct() %>%
-#                    merge(., acute_persistent_species, by.x="feature", by.y="feature") %>%
-#                    distinct()
-
-#write.csv(signif_all_annot[, c("feature","subspecies", "Life_style", "inf_type")], row.names = FALSE,
-#           "MaAsLin3_significant_species_annotations.tsv")
-
-
-
-
-
-
-```
-
 Load the annotations made for significant species, life-style and infection types,
 match those to species name.
 ```{r}
@@ -341,13 +308,9 @@ signif_species_annot <-  fread(here("data", "MaAsLin3_significant_species_annota
 signif_all_annot <- merge(signif_all, signif_species_annot,
                           by="feature", all.x = FALSE, all.y=FALSE) %>%
                     distinct()
-
 ```
 
-Filter only the relevant information for quadrant plot plotting. Filter the data
-to contain only the lifestyles and infection types that are of interest, then 
-in case of multiple results per feature, choose the one with the smallest FDR 
-corrected q-value and teh corresponding coef and annotations to represent that.
+Filter only the relevant information for quadrant plot plotting. 
 ```{r}
 quadrant_plot_data <- signif_all_annot %>%
   filter(Life_style=="Pathogenic" | Life_style=="Commensal",
@@ -370,7 +333,7 @@ create quadrant figure from the persistent/acute and commensial/pathogenic axis
                acute      persistent
 
 ```{r}
-#calculate the features belonging to each category
+#set the features belonging to each category
 
 a <- quadrant_plot_data %>%
   filter(Life_style=="Pathogenic",
@@ -393,19 +356,13 @@ nrow(b)
 nrow(c)
 nrow(d)
 ```
-IDEA kuvan tekemiseen:
 
-valmistele jokaiselle ruudulle oma grid ja niiden koordinaatti yhdistelmät
-(vaikka 1000 pistettä per ruutu)
-
-ja sitten niistä koordinaattipareista valitse randomilla nrow(ruudun lajit)
 ```{r}
 make_template_grid <- function(k, xmin, xmax, ymin, ymax, margin = 0.1) {
   stopifnot(k >= 2)
   xrange <- xmax - xmin
   yrange <- ymax - ymin
   
-  # shrink box by margin percentage
   xmin2 <- xmin + margin * xrange
   xmax2 <- xmax - margin * xrange
   ymin2 <- ymin + margin * yrange
@@ -433,7 +390,7 @@ d_coords <- make_template_grid(k, xmin =  0, xmax =  1, ymin = -1, ymax =  0, ma
 ```
 
 
-Then randomly sample right number of coordinates for each panel
+Randomly sample right number of coordinates for each panel
 
 ```{r}
 #set.seed(5)
@@ -496,6 +453,7 @@ quadrant <- ggplot(data_all) +
 #        width = 6, height = 4, dpi=300)
 
 ```
+
 
 
 
