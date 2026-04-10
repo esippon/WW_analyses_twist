@@ -146,8 +146,6 @@ adiv_plot(alpha_div_human, "shannon_index", "Shannon index")
 
 adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)")
 
-#save_adiv_plot(alpha_div_human, "simpson_index", "Simpson index (1-D)", mode="plot")
-
 adiv_plot(alpha_div_human, "species_count", "Detected species (N)")
 ```
 
