@@ -7,10 +7,29 @@ Repository contains the code and data used to produce the analyses and figures i
 
 
 **Repository contains:**
-- `Esviritu_HostDiseaseGenotypeV5.tsv`: EsViritu results with genometype, host and tropism annotations and corresponding references.
-- `MaAsLin3_significant_species.tsv`: Life-style and infection type annotations for significant species identified in MaAsLin3 analysis.
-- `Rhinovirus_cases.tsv`: Clinical case data for rhinovirus A
-- `sample_metadata.csv`: associated metadata for each sample
-- scripts: scripts for producing the analysis and figures presented
+`Esviritu_HostDiseaseGenotypeV5.tsv`: EsViritu results with genometype, host and tropism annotations and corresponding references.
+`MaAsLin3_significant_species.tsv`: Life-style and infection type annotations for significant species identified in MaAsLin3 analysis.
+`Rhinovirus_cases.tsv`: Clinical case data for rhinovirus A
+`sample_metadata.csv`: associated metadata for each sample
+scripts: scripts for producing the analysis and figures presented
+
+**Script contents**
+`Alpha_diversity.Rmd`
 
 
+`Beta_diversity.Rmd`
+
+`DAA_MaAsLin3.Rmd`
+
+`Overview_of_sampling_time.Rmd`
+
+`Pie_plots.Rmd`
+
+`Sampling_site_map.Rmd`
+
+`Sequencing_statistics.Rmd`
+
+`Taxonomic_tree.Rmd`
+
+
+`Rhinovirus_cases.Rmd`
