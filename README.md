@@ -8,28 +8,48 @@ Repository contains the code and data used to produce the analyses and figures i
 
 **Repository contains:**
 `Esviritu_HostDiseaseGenotypeV5.tsv`: EsViritu results with genometype, host and tropism annotations and corresponding references.
+
 `MaAsLin3_significant_species.tsv`: Life-style and infection type annotations for significant species identified in MaAsLin3 analysis.
+
 `Rhinovirus_cases.tsv`: Clinical case data for rhinovirus A
+
 `sample_metadata.csv`: associated metadata for each sample
+
 scripts: scripts for producing the analysis and figures presented
 
 **Script contents**
+
 `Alpha_diversity.Rmd`
+Calculation of alpha diversity metrics, analyses for related metrics and producing figures Fig2B, C, D.
 
 
 `Beta_diversity.Rmd`
+Calculation of Bray-Curtis distance, PERMANOVA tests, figure Fig2E.
+
 
 `DAA_MaAsLin3.Rmd`
+MaAsLin3 analyses, figures Fig4A, B, C. Requires file MaAsLin3_significant_species_annotations.tsv as an input in addition to Esviritu_HostDiseaseGenotypeV5.ts and sample_metadata.csv.
+
 
 `Overview_of_sampling_time.Rmd`
+Producing figures Fig3E, F, G, H.
+
 
 `Pie_plots.Rmd`
+Producing figures Fig1F, G and Fig3A, B, C, D.
 
-`Sampling_site_map.Rmd`
 
 `Sequencing_statistics.Rmd`
+Producing figures Fig1A, B, C, D and related analyses.
+
 
 `Taxonomic_tree.Rmd`
+Producing figures Fig1E and Fig2A.
 
 
 `Rhinovirus_cases.Rmd`
+Producing supplementary figure FigS1. Requires Rhinovirus_cases.csv as an input data.
+
+
+`Sampling_site_map.Rmd`
+Producing figure Fig5.
