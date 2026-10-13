@@ -24,7 +24,7 @@ Set paths to data directory and output directory
 ```{r}
 data_path = "path/to/data"
 
-output_path  = "path/to/output_dir"
+output_path  = "path/to/save/outputs"
 ```
 
 ```{r}
@@ -295,14 +295,14 @@ plot_heatmap <- function(data, original_data){
 hm_DP_species <- plot_heatmap(signif_prevalence, maaslin_in_species_RPKMF)
 hm_DP_species
 
-#ggsave(hm_DP_species, file = paste0(output_path, "Figures/hm_DP_species.jpg")), 
+#ggsave(hm_DP_species, file = paste0(output_path, "hm_DP_species.jpg")), 
 #        width = 15, height = 20, units = "in", dpi=300)
 
 
 hm_DA_species <- plot_heatmap(signif_abundance, maaslin_in_species_RPKMF)
 hm_DA_species
 
-#ggsave(hm_DA_species, file = paste0(output_path, "Figures/hm_DA_specie.jpg"), 
+#ggsave(hm_DA_species, file = paste0(output_path, "hm_DA_specie.jpg"), 
 #        width = 15, height = 8, units = "in", dpi=300)
 ```
 
@@ -313,7 +313,7 @@ match those to species name.
 ```{r}
 signif_all <- rbind(signif_abundance, signif_prevalence)
 
-signif_species_annot <-  fread(paste0(data_path, "MaAsLin3_significant_species_annotations.jpg"))
+signif_species_annot <-  fread(paste0(data_path, "MaAsLin3_significant_species_annotations.tsv"))
 
 signif_all_annot <- merge(signif_all, signif_species_annot,
                           by="feature", all.x = FALSE, all.y=FALSE) %>%
@@ -459,7 +459,7 @@ quadrant <- ggplot(data_all) +
         panel.border = element_rect(color="black", linewidth=2),
         text = element_text(family = "Arial", size=20, color="black"))
 
-#ggsave(quadrant, file = paste0("output_path, "Figures/quadrant_plot_DAA.jpg"), 
+#ggsave(quadrant, file = paste0("output_path, "quadrant_plot_DAA.jpg"), 
 #        width = 6, height = 4, dpi=300)
 
 ```
