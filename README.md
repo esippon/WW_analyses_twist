@@ -57,8 +57,11 @@ Producing supplementary figure FigS1. Requires Rhinovirus_cases.csv as an input 
 `Sampling_site_map.Rmd`
 Producing figure Fig5.
 
-### Reproducing figures and analyses
+# Reproducing figures and analyses
 
-Download data from directory data. Download .Rmd files and set appropriate _data_path_ and _output_path_ variables in each script and run the scripts
-
+1.) git clone this repo
+2.) open the .Rproj file in RStudio 
+3.) use renv to install the necessary libraries: renv::restore()
+4.) Define appropriate _data_path_ and _output_path_ variables
+5.) Run scripts
 
