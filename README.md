@@ -6,7 +6,7 @@ Repository contains the code and data used to produce the analyses and figures i
 
 
 
-**Repository contains:**
+## Repository contains:
 data: Data required for reproducing analyses and fiugres.
 scripts: Scripts for producing the analysis and figures presented, separated by theme.
 figures: Figures presented in the related mansucript.
@@ -60,8 +60,12 @@ Producing figure Fig5.
 # Reproducing figures and analyses
 
 1.) git clone this repo
+
 2.) open the .Rproj file in RStudio 
+
 3.) use renv to install the necessary libraries: renv::restore()
+
 4.) Define appropriate _data_path_ and _output_path_ variables
-5.) Run scripts
+
+5.) Run scripts in any desired order
 
