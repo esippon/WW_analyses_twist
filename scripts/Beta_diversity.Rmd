@@ -19,7 +19,7 @@ Set paths to data directory and output directory
 ```{r}
 data_path = "path/to/data"
 
-output_path  = "path/to/output_dir"
+output_path  = "path/to/save/outputs"
 ```
 
 ```{r}
@@ -159,7 +159,7 @@ beta_PCoA_human_season_year <- plot_PCoA(data=esviritu_res_human,
 beta_PCoA_human_season_year
 
 ggsave(beta_PCoA_human_season_year, 
-       file = paste0(output_path, "Figures/beta_PCoA_human_season_year.jpg"), 
+       file = paste0(output_path, "beta_PCoA_human_season_year.jpg"), 
        width = 7.2, height = 5, units = "in", dpi=300)
 ```
 
