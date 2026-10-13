@@ -20,7 +20,7 @@ Set paths to data directory and output directory
 ```{r}
 data_path = "path/to/data"
 
-output_path  = "path/to/output_dir"
+output_path  = "path/to/save/outputs"
 ```
 
 ```{r}
@@ -191,7 +191,7 @@ tax_tree <- tree_all %<+% freq_info_dt +
 
 tax_tree
 
-ggsave(tax_tree, file = paste0(output_path, "Figures/tax_tree_all.jpg"), 
+ggsave(tax_tree, file = paste0(output_path, "tax_tree_all.jpg"), 
        width=8, height=6, dpi=300)
 ```
 
@@ -356,7 +356,7 @@ tax_tree_year <- tree_h %<+% freq_info_dt +
 
 tax_tree_year
 
-ggsave(tax_tree_year, file= paste0(output_path, "Figures/tax_tree_human_years.jpg"), 
+ggsave(tax_tree_year, file= paste0(output_path, "tax_tree_human_years.jpg"), 
        width=8, height=6, dpi=300)
 ```
 
