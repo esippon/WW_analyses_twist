@@ -19,7 +19,7 @@ Set paths to data directory and output directory
 ```{r}
 data_path = "path/to/data"
 
-output_path  = "path/to/output_dir"
+output_path  = "path/to/save/outputs"
 ```
 
 ```{r}
@@ -162,7 +162,7 @@ RPKMF_human_viruses_95CI <- plot_RPKMF(RPKMF_data_human_95CI)
 RPKMF_human_viruses_95CI
 
 ggsave(RPKMF_human_viruses_95CI, 
-       file = paste0(output_path, "Figures/RPKMF_human_viruses_95CI.jpg"), 
+       file = paste0(output_path, "RPKMF_human_viruses_95CI.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 
 
@@ -170,7 +170,7 @@ RPKMF_enteric_95CI <- plot_RPKMF(RPKMF_data_enteric_95CI)
 RPKMF_enteric_95CI
 
 ggsave(RPKMF_enteric_95CI, 
-       file = paste0(output_path, "Figures/RPKMF_enteric_95CI.jpg"), 
+       file = paste0(output_path, "RPKMF_enteric_95CI.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 
 
@@ -267,7 +267,7 @@ species_count_human_95CI <- plot_species_count(s_count_data_human_95CI)
 species_count_human_95CI
 
 ggsave(species_count_human_95CI, 
-       file = paste0(output_path, "Figures/species_count_human_95CI.jpg"), 
+       file = paste0(output_path, "species_count_human_95CI.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 
 
@@ -276,7 +276,7 @@ species_count_mucocutaneous_95CI <- plot_species_count(s_count_data_mucocutaneou
 species_count_mucocutaneous_95CI
 
 ggsave(species_count_mucocutaneous_95CI, 
-       file = paste0(output_path, "Figures/species_count_mucocutaneous_95CI.jpg"), 
+       file = paste0(output_path, "species_count_mucocutaneous_95CI.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 ```
 
