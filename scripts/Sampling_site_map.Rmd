@@ -166,7 +166,7 @@ p2 <- p1 +
            x = TU_x, y = TU_y,
            label = "Turku\n300,000", size = 3, fill = "white") 
 
-ggsave(p2, file = paste0(output_path, "Figures/sampling_locations_purple.jpg"), 
+ggsave(p2, file = paste0(output_path, "sampling_locations_purple.jpg"), 
        width=3, height=5, dpi=300)
 ```
 
