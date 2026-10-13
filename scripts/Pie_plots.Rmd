@@ -17,7 +17,7 @@ Set paths to data directory and output directory
 ```{r}
 data_path = "path/to/data"
 
-output_path  = "path/to/output_dir"
+output_path  = "path/to/save/outputs"
 ```
 
 ```{r}
@@ -134,11 +134,11 @@ RPKMF_pie_genus <- host_pie(sum_cat_top10(esviritu_res, "host_genus", "true_rpkm
 RPKMF_pie_genus
 
 ggsave(accession_pie_genus, 
-       file = paste0(output_path, "Figures/Accession_pie_genus.jpg"), 
+       file = paste0(output_path, "Accession_pie_genus.jpg"), 
        width = 7.2, height = 4.5, units = "in", dpi=300)
  
 ggsave(RPKMF_pie_genus, 
-       file = paste0(output_path, "Figures/RPKMF_pie_genus.jpg"), 
+       file = paste0(output_path, "RPKMF_pie_genus.jpg"), 
        width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
 Sanity check to see if the legend is right:
@@ -179,7 +179,7 @@ accession_pie_tropism_20_21 <- host_pie(summarize_tax_levels(esviritu_res_human_
 accession_pie_tropism_20_21
 
 ggsave(accession_pie_tropism_20_21, 
-       file = paste0(output_path, "Figures/accession_pie_tropism_20_21.jpg"), 
+       file = paste0(output_path, "accession_pie_tropism_20_21.jpg"), 
        width = 7.2, height = 4.5, units = "in", dpi=300)
 
 # 2024-2025
@@ -188,7 +188,7 @@ accession_pie_tropism_24_25 <- host_pie(summarize_tax_levels(esviritu_res_human_
 accession_pie_tropism_24_25
 
 ggsave(accession_pie_tropism_24_25, 
-       file = paste0(output_path, "Figures/accession_pie_tropism_24_25.jpg"), 
+       file = paste0(output_path, "accession_pie_tropism_24_25.jpg"), 
        width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
 
@@ -208,7 +208,7 @@ RPKMF_pie_tropism_20_21 <- host_pie(sum_cat_top10(esviritu_res_human_20_21,
 RPKMF_pie_tropism_20_21
 
 ggsave(RPKMF_pie_tropism_20_21, 
-       file = paste0(output_path, "Figures/RPKMF_pie_tropism_20_21.jpg"), 
+       file = paste0(output_path, "RPKMF_pie_tropism_20_21.jpg"), 
        width = 7.2, height = 4.5, units = "in", dpi=300)
 
 # 2024-2025
@@ -217,7 +217,7 @@ RPKMF_pie_tropism_24_25 <- host_pie(sum_cat_top10(esviritu_res_human_24_25,
 RPKMF_pie_tropism_24_25
 
 ggsave(RPKMF_pie_tropism_24_25, 
-       file = paste0(output_path, "Figures/RPKMF_pie_tropism_24_25.jpg"), 
+       file = paste0(output_path, "RPKMF_pie_tropism_24_25.jpg"), 
        width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
 
