@@ -7,7 +7,6 @@ author: "Eevi Sipponen"
 
 ```{r}
 library(data.table)
-library(here)
 library(ggplot2)
 library(dplyr)
 ```
@@ -29,8 +28,6 @@ esviritu_res_human <- esviritu_res %>%
 
 sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")
 ```
-
-
 
 # Plot pie charts for accession count and RPKMF values distribution by host
 

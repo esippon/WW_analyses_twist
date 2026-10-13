@@ -16,7 +16,6 @@ rhino <- read.csv(paste0(data_path, "Rhinovirus_cases.csv"), sep=";", header=TRU
 ```
 
 ```{r}
-library(here)
 library(ggplot2)
 library(dplyr)
 ```

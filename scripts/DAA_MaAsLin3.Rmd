@@ -15,7 +15,6 @@ library(maaslin3)
 library(tidyr)
 library(dplyr)
 library(data.table)
-library(here)
 library(pheatmap)
 ```
 

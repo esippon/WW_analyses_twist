@@ -7,7 +7,6 @@ author: "Eevi Sipponen"
 ```{r}
 library(tidyr)
 library(dplyr)
-library(here)
 library(ggplot2)
 library(data.table)
 library(DescTools)

@@ -6,7 +6,6 @@ author: "Eevi Sipponen"
 # Load libraries
 
 ```{r}
-library(here)
 library(data.table)
 library(ggplot2)
 library(dplyr)
