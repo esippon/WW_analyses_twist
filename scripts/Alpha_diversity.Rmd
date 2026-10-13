@@ -18,9 +18,9 @@ library(vegan)
 
 Set paths to data directory and output directory
 ```{r}
-data_path = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/data/"
+data_path = "path/to/data"
 
-output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+output_path  = "path/to/save/outputs"
 ```
 
 ```{r}
@@ -160,13 +160,13 @@ simpson_h <- adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D
 
 species_h <- adiv_plot(alpha_div_human, "species_count", "Detected species (N)")
 
-ggsave(shannon_h, file = paste0(output_path, "Figures/shannon_h.jpg"), 
+ggsave(shannon_h, file = paste0(output_path, "shannon_h.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 
-ggsave(simpson_h, file = paste0(output_path, "Figures/simpson_h.jpg"), 
+ggsave(simpson_h, file = paste0(output_path, "simpson_h.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 
-ggsave(species_h, file = paste0(output_path, "Figures/species_h.jpg"), 
+ggsave(species_h, file = paste0(output_path, "species_h.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 ```
 
