@@ -10,18 +10,24 @@ library(data.table)
 library(here)
 library(ggplot2)
 library(dplyr)
-#library(paletteer)
-#library(ggthemes)
-#library(showtext)
 ```
 
 # Load data
 
+Set paths to data directory and output directory
 ```{r}
-esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
-esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
+data_path = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/data/"
 
-sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+```
+
+```{r}
+esviritu_res <- fread(paste0(data_path, "Esviritu_HostDiseaseGenometypeV5.tsv"))
+
+esviritu_res_human <- esviritu_res %>% 
+  filter(host_species == "Homo sapiens")
+
+sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")
 ```
 
 
@@ -130,19 +136,23 @@ accession_pie_genus
 RPKMF_pie_genus <- host_pie(sum_cat_top10(esviritu_res, "host_genus", "true_rpkmf"))
 RPKMF_pie_genus
 
-#ggsave(Accession_pie_genus, 
-#       file = here("outputs/Figures/final_figures","Accession_pie_genus.tiff"), 
-#       width = 7.2, height = 4.5, units = "in", dpi=300)
+ggsave(accession_pie_genus, 
+       file = paste0(output_path, "Figures/Accession_pie_genus.jpg"), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
  
-#ggsave(RPKMF_pie_genus, 
-#       file = here("outputs/Figures/final_figures","RPKMF_pie_genus.tiff"), 
-#       width = 7.2, height = 4.5, units = "in", dpi=300)
+ggsave(RPKMF_pie_genus, 
+       file = paste0(output_path, "Figures/RPKMF_pie_genus.jpg"), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
 Sanity check to see if the legend is right:
 ```{r}
 esviritu_res %>%
-  filter(host_species=="Homo sapiens") %>%
+  filter(host_genus=="Homo") %>%
   summarize(accessions=n_distinct(accession))
+
+esviritu_res %>%
+  filter(host_genus=="Homo") %>%
+  summarize(RPKMF_sum=sum(true_rpkmf))
 ```
 
 ## Plot pie plots for human data, distribtuion of tropism based on 
@@ -164,46 +174,54 @@ esviritu_res_human_24_25 <- esviritu_res_human %>%
   filter(sample_id %in% samples_24_25)
 ```
 
-
+Plot accession count pieplots of tropism distributions
 ```{r}
-# Accession count pie plots
+# 2020-2021
 accession_pie_tropism_20_21 <- host_pie(summarize_tax_levels(esviritu_res_human_20_21, 
                                                              "tropism_broad", "Accession"))
 accession_pie_tropism_20_21
-#ggsave(accession_pie_tropism_20_21, 
-#       file = here("outputs/Figures/final_figures","accession_pie_tropism_20_21.tiff"), 
-#       width = 7.2, height = 4.5, units = "in", dpi=300)
 
+ggsave(accession_pie_tropism_20_21, 
+       file = paste0(output_path, "Figures/accession_pie_tropism_20_21.jpg"), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
+
+# 2024-2025
 accession_pie_tropism_24_25 <- host_pie(summarize_tax_levels(esviritu_res_human_24_25, 
                                                              "tropism_broad", "Accession"))
 accession_pie_tropism_24_25
-#ggsave(accession_pie_tropism_24_25, 
-#       file = here("outputs/Figures/final_figures","accession_pie_tropism_24_25.tiff"), 
-#       width = 7.2, height = 4.5, units = "in", dpi=300)
+
+ggsave(accession_pie_tropism_24_25, 
+       file = paste0(output_path, "Figures/accession_pie_tropism_24_25.jpg"), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
+
+Check for legend:
 ```{r}
 esviritu_res_human_24_25 %>%
   filter(host_species=="Homo sapiens",
          tropism_broad=="Enteric") %>%
   summarize(accessions=n_distinct(accession))
 ```
+Plot RPKMF sum pieplots of tropism distributions
 
 ```{r}
-#RPKMF pie plots
-
+# 2020-2021
 RPKMF_pie_tropism_20_21 <- host_pie(sum_cat_top10(esviritu_res_human_20_21, 
                                                   "tropism_broad", "true_rpkmf"))
 RPKMF_pie_tropism_20_21
-#ggsave(RPKMF_pie_tropism_20_21, 
-#       file = here("outputs/Figures/final_figures","RPKMF_pie_tropism_20_21.tiff"), 
-#       width = 7.2, height = 4.5, units = "in", dpi=300)
 
+ggsave(RPKMF_pie_tropism_20_21, 
+       file = paste0(output_path, "Figures/RPKMF_pie_tropism_20_21.jpg"), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
+
+# 2024-2025
 RPKMF_pie_tropism_24_25 <- host_pie(sum_cat_top10(esviritu_res_human_24_25, 
                                                   "tropism_broad", "true_rpkmf"))
 RPKMF_pie_tropism_24_25
-#ggsave(RPKMF_pie_tropism_24_25, 
-#       file = here("outputs/Figures/final_figures","RPKMF_pie_tropism_24_25.tiff"), 
-#       width = 7.2, height = 4.5, units = "in", dpi=300)
+
+ggsave(RPKMF_pie_tropism_24_25, 
+       file = paste0(output_path, "Figures/RPKMF_pie_tropism_24_25.jpg"), 
+       width = 7.2, height = 4.5, units = "in", dpi=300)
 ```
 
 

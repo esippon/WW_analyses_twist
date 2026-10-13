@@ -6,7 +6,6 @@ author: "Eevi Sipponen"
 # Load libraries
 
 ```{r}
-library(here)
 library(data.table)
 library(ggplot2)
 library(dplyr)
@@ -16,13 +15,22 @@ library(vegan)
 
 # Load data
 
+
+Set paths to data directory and output directory
 ```{r}
-esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
-#colnames(esviritu_res)[1] <- "sample_ID"
+data_path = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/data/"
 
-esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
+output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+```
 
-sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```{r}
+esviritu_res <- fread(paste0(data_path, "Esviritu_HostDiseaseGenometypeV5.tsv"))
+
+esviritu_res_human <- esviritu_res %>% 
+  filter(host_species == "Homo sapiens")
+
+sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")
+
 ```
 
 ## Function for RPKMF value calculation (at taxa level)
@@ -34,7 +42,6 @@ RPKMF_df <- function(data, tax_level){
     summarize(RPKMF = sum(true_rpkmf)) %>%
     ungroup()
   
-  #tidyr
   RPKMF_df_wide <-pivot_wider(data=RPKMF_df,
                     names_from = sample_id,
                     values_from = RPKMF,
@@ -65,19 +72,29 @@ summarize_tax_levels <- function(data){
 ```
 
 ```{r}
-summarize_tax_levels(esviritu_res_human)$species
+summarize_tax_levels(esviritu_res_human)
 ```
+
+```{r}
+esviritu_res_human %>%
+    summarize(phylums=n_distinct(phylum),
+              classes=n_distinct(tclass),
+              orders=n_distinct(order),
+              families=n_distinct(family),
+              genera=n_distinct(genus),
+              species=n_distinct(species),
+              subspecies=n_distinct(subspecies))
+```
+
+
 
 ## Alpha diversity calculations
 
 ```{r}
-#calculate alpha diversity metrics for species level data
-
 alpha_diveristy_calc <- function(data){
   
   species_df <- RPKMF_df(data, "species")
-  
-  #calculate shannon index
+
   adiv <- data.frame(sample_ID=colnames(species_df[,-1]),
                   shannon_index = diversity(x=t(species_df[,-1]), 
                                             index="shannon",
@@ -85,18 +102,13 @@ alpha_diveristy_calc <- function(data){
                   simpson_index_inv = diversity(x=t(species_df[,-1]), 
                                             index="invsimpson",
                                             equalize.groups = FALSE),
-                  #simpson_index = diversity(x=t(species_df[,-1]), 
-                   #                         index="simpson",
-                  #                          equalize.groups = FALSE),
                   species_count = summarize_tax_levels(data)$species)
 
-  #add metadata to alpha diversity 
   adiv <-  merge(adiv, 
-                 sample_metadata[,c("sample_ID", "City", "Month_chr", "Date", 
-                                    "reads_in_sample",
-                                    "Year_cat")],
+                 sample_metadata %>%
+                   select("sample_ID", "City", "Month_chr", "Date", 
+                          "reads_in_sample", "Year_cat"),
                   by="sample_ID")
-
 
   return(adiv)
   
@@ -142,11 +154,20 @@ adiv_plot <- function(data, variable, y_lab){
 
 }
 
-adiv_plot(alpha_div_human, "shannon_index", "Shannon index")
+shannon_h <- adiv_plot(alpha_div_human, "shannon_index", "Shannon index")
 
-adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)")
+simpson_h <- adiv_plot(alpha_div_human, "simpson_index_inv", "Simpson index (1/D)")
 
-adiv_plot(alpha_div_human, "species_count", "Detected species (N)")
+species_h <- adiv_plot(alpha_div_human, "species_count", "Detected species (N)")
+
+ggsave(shannon_h, file = paste0(output_path, "Figures/shannon_h.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+
+ggsave(simpson_h, file = paste0(output_path, "Figures/simpson_h.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
+
+ggsave(species_h, file = paste0(output_path, "Figures/species_h.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
 ```
 
 ## Test alpha diversity metrics with Wilcox-test

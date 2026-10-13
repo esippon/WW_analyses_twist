@@ -11,23 +11,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(data.table)
-library(here)
 library(ggplot2)
 library(dplyr)
 library(cowplot)
 library(tidyr)
-library(vegan)
 ```
+
 
 # Load data
 
+Set paths to data directory and output directory
 ```{r}
-esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
-#colnames(esviritu_res)[1] <- "sample_ID"
+data_path = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/data/"
 
-esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
+output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+```
 
-sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+
+```{r}
+esviritu_res <- fread(paste0(data_path, "Esviritu_HostDiseaseGenometypeV5.tsv"))
+
+sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")
 ```
 
 ## Sequence rarefaction
@@ -43,7 +47,6 @@ read_matrix <- function(data, taxa_level){
                     names_from = sample_id,
                     values_from = reads,
                     values_fill = list(reads=0)))
-
   return(rm)
 
 }
@@ -58,19 +61,18 @@ plot_rarecurve_plot <- function(data, taxa_level){
                           label=FALSE, cex=0.2, tidy = TRUE)
   
   colnames(rarecurve) <- c("Site", "Sample", "Taxa_level")
-  rarecurve$cat <- ifelse(grepl("^(2020|2021)", as.character(rarecurve$Site)), "2020-2021", "2024-2025")
+  rarecurve$cat <- ifelse(grepl("^(2020|2021)", as.character(rarecurve$Site)), 
+                          "2020-2021", "2024-2025")
 
   pal <- c("#7B71B6", "#E06666")
 
   plot <- ggplot(data=rarecurve, aes(x=Sample, y=Taxa_level, color=cat)) +
-  geom_point(size=0.02) +
+    geom_point(size=0.02) +
     scale_color_manual(values=pal) +
     facet_wrap(~cat) +
-  labs(x="Sequences",
-       y="Species") +
-  theme_bw() +
-  theme(legend.position = "none",
-        text = element_text(size=16))
+    labs(x="Sequences", y="Species") +
+    theme_bw() +
+    theme(legend.position = "none", text = element_text(size=16))
   
   return(plot)
 }
@@ -81,10 +83,9 @@ Do rarefraction curve to the whole data
 rarecurve_all <- plot_rarecurve_plot(esviritu_res, "species")
 rarecurve_all
 
-#ggsave(rarecurve_all, file= here("outputs/Figures/final_figures", 
-#                            "rarecurve_all.tiff"), width = 7.2, height = 4, units = "in", dpi=300)
+ggsave(rarecurve_all, file = paste0(output_path, "Figures/rarecurve_all.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
 ```
-
 
 ## Viral read proportions
 
@@ -161,9 +162,9 @@ v_reads_all_plot
 plot_vread_percentage_all(v_reads_all)
 plot_vread_number_all(v_reads_all)
 
-#ggsave(v_reads_all_plot, 
-#       file = here("outputs/Figures/final_figures","v_reads_years_all.tiff"), 
-#       width = 8, height = 4, units = "in", dpi=300)
+ggsave(v_reads_all_plot, 
+       file = paste0(output_path, "Figures/v_reads_years_all.jpg"), 
+       width = 8, height = 4, units = "in", dpi=300)
 ```
 Test the difference between the proportion and number of viral reads between years
 ```{r}
@@ -171,10 +172,27 @@ wilcox.test(viral_reads_percentage ~ Year_cat, data = v_reads_all)
 wilcox.test(total_mapped ~ Year_cat, data = v_reads_all)
 ```
 
-
 ```{r}
+#means for the whole dataset
 mean(v_reads_all$viral_reads_percentage)
 mean(v_reads_all$total_mapped)
+
+# Means by year
+mean(v_reads_all %>%
+       filter(Year_cat == "2020-2021") %>%
+       pull(viral_reads_percentage))
+
+mean(v_reads_all %>%
+       filter(Year_cat == "2020-2021") %>%
+       pull(total_mapped))
+
+mean(v_reads_all %>%
+       filter(Year_cat == "2024-2025") %>%
+       pull(viral_reads_percentage))
+
+mean(v_reads_all %>%
+       filter(Year_cat == "2024-2025") %>%
+       pull(total_mapped))
 ```
 ## Assembly coverage categories
 
@@ -185,8 +203,8 @@ calc_coverage_cats <- function(data){
   data %>%
   mutate(coverage = set_covered_bases/asm_length) %>%
   mutate(cov_category = case_when(
-    coverage >= 0.8 ~ "> 80%",
-    coverage < 0.8 & coverage >= 0.5 ~ "50%-80%",
+    coverage >= 0.9 ~ "> 90%",
+    coverage < 0.9 & coverage >= 0.5 ~ "50%-90%",
     coverage < 0.5 & coverage >= 0.1 ~ "10%-50%",
     TRUE ~ "< 10%"
   ))
@@ -199,8 +217,8 @@ calc_coverage_cats_years <- function(data){
   group_by(Year_cat) %>%
   mutate(coverage = set_covered_bases/asm_length) %>%
   mutate(cov_category = case_when(
-    coverage >= 0.8 ~ "> 80%",
-    coverage < 0.8 & coverage >= 0.5 ~ "50%-80%",
+    coverage >= 0.9 ~ "> 90%",
+    coverage < 0.9 & coverage >= 0.5 ~ "50%-90%",
     coverage < 0.5 & coverage >= 0.1 ~ "10%-50%",
     TRUE ~ "< 10%"
   ))
@@ -209,45 +227,18 @@ calc_coverage_cats_years <- function(data){
 ```
 
 ```{r}
-plot_coverage_cat <- function(data, years=FALSE){
-
-  if (years==FALSE){
-    cols <- c("#fbb373", "#faa050", "#e19048", "#af7038")
+plot_coverage_cat <- function(data){
   
-  plot_data <- calc_coverage_cats(data) %>%
-    group_by(sample_id, cov_category) %>%
-    summarize(seqs = n_distinct(Accession)) %>%
-    group_by(cov_category) %>%
-    mutate(cov_category = factor(cov_category, levels = c("< 10%",
-                                                        "10% to 50%",
-                                                        "50% to 80%",
-                                                        "Over 80%")))
-
-  plot <- ggplot(data=plot_data, aes(x=cov_category, y=seqs, fill = cov_category)) +
-  geom_boxplot(color = "grey20", draw_quantiles = c(0.5)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols) +
-
-  theme_bw() +
-  labs(y = "# virus references\nwith coverage level per sample",
-       x = "Assembly coverage") +
-  theme(legend.position = "Off",
-        axis.text.x = element_text(size=10),
-        strip.text = element_text(size=10))
-  
-  return(plot)
-  } else{
-    cols_21 <- c("#7B71B6","#7B71B6", "#7B71B6", "#7B71B6" )
-    cols_24 <- c("#E06666","#E06666", "#E06666", "#E06666" )
+  cols_21 <- c("#7B71B6","#7B71B6", "#7B71B6", "#7B71B6" )
+  cols_24 <- c("#E06666","#E06666", "#E06666", "#E06666" )
     
-    plot_data <- calc_coverage_cats_years(data) %>%
-      group_by(Year_cat, sample_id, cov_category) %>%
-      summarize(seqs = n_distinct(accession)) %>%
-      group_by(cov_category) %>%
-      mutate(cov_category = factor(cov_category, levels = c("< 10%",
-                                                        "10%-50%",
-                                                        "50%-80%",
-                                                        "> 80%")))
+  plot_data <- calc_coverage_cats_years(data) %>%
+    group_by(Year_cat, sample_id, cov_category) %>%
+    summarize(seqs = n_distinct(accession)) %>%
+    group_by(cov_category) %>%
+    mutate(cov_category = factor(cov_category, 
+                                 levels = c("< 10%", "10%-50%",
+                                            "50%-90%", "> 90%")))
     
     plot_data$cat_facet <- paste(plot_data$cov_category, 
                                  plot_data$Year_cat, sep = "_")
@@ -255,21 +246,20 @@ plot_coverage_cat <- function(data, years=FALSE){
 
     plot <- ggplot(data=plot_data, aes(x=cov_category, y=seqs, fill = cat_facet)) +
     geom_boxplot(color = "grey20") +
-    #xlim(c(0,150)) +
     theme_bw() +
     labs(y = "virus references\nwith coverage level per sample (N)",
          x = "Assembly coverage") +
     facet_wrap(~Year_cat)+
     scale_fill_manual(values = c(
-      setNames(cols_21, paste(c("< 10%","10%-50%","50%-80%","> 80%"), 
+      setNames(cols_21, paste(c("< 10%","10%-50%","50%-90%","> 90%"), 
                               "2020-2021", sep = "_")),
-      setNames(cols_24, paste(c("< 10%","10%-50%","50%-80%","> 80%"), 
+      setNames(cols_24, paste(c("< 10%","10%-50%","50%-90%","> 90%"), 
                               "2024-2025", sep = "_"))
     )) +
     scale_color_manual(values = c(
-      setNames(cols_21, paste(c("< 10%","10%-50%","50%-80%","> 80%"), 
+      setNames(cols_21, paste(c("< 10%","10%-50%","50%-90%","> 90%"), 
                               "2020-2021", sep = "_")),
-      setNames(cols_24, paste(c("< 10%","10%-50%","50%-80%","> 80%"), 
+      setNames(cols_24, paste(c("< 10%","10%-50%","50%-90%","> 90%"), 
                               "2024-2025", sep = "_"))
     )) +
     theme(legend.position = "Off",
@@ -277,18 +267,18 @@ plot_coverage_cat <- function(data, years=FALSE){
           strip.text = element_text(size=14))
   
   return(plot)
-  }
+
 }
 ```
 
 
 ```{r}
-asm_coverage_cats <- plot_coverage_cat(esviritu_res, years=TRUE)
+asm_coverage_cats <- plot_coverage_cat(esviritu_res)
 asm_coverage_cats
 
-#ggsave(asm_coverage_cats, 
-#       file = here("outputs/Figures/Final_figures", "asm_coverge_cats_years.tiff"), 
-#       width = 7.2, height = 4, units = "in", dpi=300)
+ggsave(asm_coverage_cats, 
+       file = paste0(output_path, "Figures/asm_coverge_cats_years.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
 ```
 
 ## Test difference between years
@@ -300,10 +290,9 @@ cov_cats_years <- calc_coverage_cats_years(esviritu_res) %>%
       summarize(seqs = n_distinct(accession),
                 assemblies=n_distinct(assembly)) %>%
       group_by(cov_category) %>%
-      mutate(cov_category = factor(cov_category, levels = c("< 10%",
-                                                        "10%-50%",
-                                                        "50%-80%",
-                                                        "> 80%")))
+      mutate(cov_category = factor(cov_category, 
+                                   levels = c("< 10%", "10%-50%",
+                                              "50%-90%", "> 90%")))
 ```
 
 Test the difference between years in the number of assemblies with coverage > 50%
@@ -318,7 +307,7 @@ over50_20_21 <- cov_cats_years %>%
   summarize(seqs=sum(seqs)) 
 
 a <- sum(over50_20_21[over50_20_21$cov_category%in% c("10%-50%", "< 10%"), "seqs"])
-b <- sum(over50_20_21[over50_20_21$cov_category%in% c("50%-80%", "> 80%"), "seqs"])
+b <- sum(over50_20_21[over50_20_21$cov_category%in% c("50%-90%", "> 90%"), "seqs"])
 
 over50_24_25 <- cov_cats_years %>%
   filter(Year_cat == "2024-2025") %>%
@@ -326,7 +315,7 @@ over50_24_25 <- cov_cats_years %>%
   summarize(seqs=sum(seqs))
 
 c <- sum(over50_24_25[over50_24_25$cov_category%in% c("10%-50%", "< 10%"), "seqs"])
-d <- sum(over50_24_25[over50_24_25$cov_category%in% c("50%-80%", "> 80%"), "seqs"])
+d <- sum(over50_24_25[over50_24_25$cov_category%in% c("50%-90%", "> 90%"), "seqs"])
 
 
 m <- matrix(c(a,b,c,d), nrow=2, byrow=TRUE)
@@ -350,7 +339,7 @@ under10_20_21 <- cov_cats_years %>%
   summarize(seqs=sum(seqs)) 
 
 a <- sum(over50_20_21[over50_20_21$cov_category == "< 10%", "seqs"])
-b <- sum(over50_20_21[over50_20_21$cov_category%in% c("10%-50%","50%-80%", "> 80%"), "seqs"])
+b <- sum(over50_20_21[over50_20_21$cov_category%in% c("10%-50%","50%-90%", "> 90%"), "seqs"])
 a
 b
 under10_24_25 <- cov_cats_years %>%
@@ -358,7 +347,7 @@ under10_24_25 <- cov_cats_years %>%
   group_by(cov_category) %>%
   summarize(seqs=sum(seqs))
 c <- sum(over50_24_25[over50_24_25$cov_category == "< 10%", "seqs"])
-d <- sum(over50_24_25[over50_24_25$cov_category%in% c("10%-50%","50%-80%", "> 80%"), "seqs"])
+d <- sum(over50_24_25[over50_24_25$cov_category%in% c("10%-50%","50%-90%", "> 90%"), "seqs"])
 
 
 m <- matrix(c(a,b,c,d), nrow=2, byrow=TRUE)

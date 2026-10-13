@@ -3,13 +3,17 @@ title: "Sampling locations and corresponding municipalities and population serve
 author: "Eevi Sipponen"
 ---
 
+Set the path for output, where to save figure
+```{r}
+output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+```
+
 Load libraries
 ```{r}
 library(sf)
 library(dplyr)
 library(ggplot2)
 library(ggspatial)
-library(here)
 ```
 
 
@@ -123,8 +127,7 @@ TU_y <- TU_pt$y + 50000
 
 
 p2 <- p1 +
-  annotate("segment",
-           x = H_x, y = H_y,
+  annotate("segment", x = H_x, y = H_y,
            xend = H_pt$x, yend = H_pt$y,
            linewidth = 0.3, color = "black")+
   annotate("label",
@@ -163,7 +166,8 @@ p2 <- p1 +
            x = TU_x, y = TU_y,
            label = "Turku\n300,000", size = 3, fill = "white") 
 
-#ggsave(p2, file = here("outputs", "sampling_locations_purple.tiff"), width=3, height=5, dpi=300)
+ggsave(p2, file = paste0(output_path, "Figures/sampling_locations_purple.jpg"), 
+       width=3, height=5, dpi=300)
 ```
 
 

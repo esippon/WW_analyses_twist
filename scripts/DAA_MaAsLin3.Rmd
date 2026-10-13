@@ -20,13 +20,21 @@ library(pheatmap)
 ```
 
 # Load data
+
+Set paths to data directory and output directory
 ```{r}
-esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
+data_path = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/data/"
 
-#filter the data to contain only human viruses
-esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
+output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+```
 
-sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+```{r}
+esviritu_res <- fread(paste0(data_path, "Esviritu_HostDiseaseGenometypeV5.tsv"))
+
+esviritu_res_human <- esviritu_res %>% 
+  filter(host_species == "Homo sapiens")
+
+sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")
 ```
 
 # Format the input data - input = read count data
@@ -134,7 +142,7 @@ set.seed(2025)
 
 human_species_year_input_model <- maaslin3(input_data = maaslin_in_hspecies,
                         input_metadata = maaslin_in_meta,
-                        output = 'MaAsLin3_Human_Years',
+                        output = paste0(output_path, 'MaAsLin3_Human_Years'),
                         formula = '~ Year_cat + reads_in_sample',
                         normalization = 'TSS',
                         transform = 'LOG',
@@ -156,7 +164,7 @@ Save the DAA results for later use:
 #     maaslin_in_meta, human_species_year_input_model, 
 #     file = "DAA_years_vars.RData")
 
-load("DAA_years_vars.RData")
+#load("DAA_years_vars.RData")
 ```
 
 Do FDR correction wihtin the variable of interest, Year_cat to abundance and 
@@ -190,12 +198,11 @@ signif_prevalence <- maaslin_res %>%
 ```{r}
 #write the significant results to tables
 #write.csv(signif_abundance, row.names = FALSE,
-#           "MaAsLin3_Human_Years/MaAsLin3_signif_abundance.tsv")
+#          paste0(output_path, "MaAsLin3_Human_Years/MaAsLin3_signif_abundance.tsv"))
 
 #write.csv(signif_prevalence, row.names = FALSE,
-#           "MaAsLin3_Human_Years/MaAsLin3_signif_prevalence.tsv")
+#          paste0(output_path, "MaAsLin3_Human_Years/MaAsLin3_signif_prevalence.tsv"))
 ```
-
 
 Some sanity checks
 ```{r}
@@ -207,6 +214,7 @@ unique(signif_prevalence$error)
 unique(signif_abundance$metadata)
 unique(signif_prevalence$metadata)
 ```
+
 ## Heatmap of differentially abundant viral species
 
 ```{r}
@@ -233,7 +241,9 @@ plot_heatmap <- function(data, original_data){
 
   #column annotations
   annot_col <- data.frame(Year = c(rep("2020-2021", 60), rep("2024-2025", 60)))
+  
   rownames(annot_col) <- colnames(plot_data)
+  
   annot_colors_col <- list(Year = c("2020-2021" = "#7B71B6", "2024-2025" = "#E06666"))
   
   #row annotations
@@ -285,13 +295,15 @@ plot_heatmap <- function(data, original_data){
 ```{r}
 hm_DP_species <- plot_heatmap(signif_prevalence, maaslin_in_species_RPKMF)
 hm_DP_species
-#ggsave(hm_DP_species, file = here("outputs/Figures/final_figures", "hm_DP_species.tiff"), 
+
+#ggsave(hm_DP_species, file = paste0(output_path, "Figures/hm_DP_species.jpg")), 
 #        width = 15, height = 20, units = "in", dpi=300)
 
 
 hm_DA_species <- plot_heatmap(signif_abundance, maaslin_in_species_RPKMF)
 hm_DA_species
-#ggsave(hm_DA_species, file = here("outputs/Figures/final_figures", "hm_DA_species.tiff"), 
+
+#ggsave(hm_DA_species, file = paste0(output_path, "Figures/hm_DA_specie.jpg"), 
 #        width = 15, height = 8, units = "in", dpi=300)
 ```
 
@@ -302,8 +314,7 @@ match those to species name.
 ```{r}
 signif_all <- rbind(signif_abundance, signif_prevalence)
 
-signif_species_annot <-  fread(here("data", "MaAsLin3_significant_species_annotations.tsv"))
-
+signif_species_annot <-  fread(paste0(data_path, "MaAsLin3_significant_species_annotations.jpg"))
 
 signif_all_annot <- merge(signif_all, signif_species_annot,
                           by="feature", all.x = FALSE, all.y=FALSE) %>%
@@ -428,7 +439,7 @@ quadrant <- ggplot(data_all) +
   geom_point(aes(x=x, y=y, size=(-log10(qval_individual_readj)*abs(coef)), 
                  color=more_abundant_in)) +
   scale_color_manual(values= c("2020-2021" = "#7B71B6", "2024-2025" = "#E06666")) +
-                     #labels=c("2020-2021", "2024-2025"))+
+
   labs(x="", y="") +
   theme_bw()  +
   scale_x_continuous(breaks=c(-0.5, 0.5),
@@ -449,7 +460,7 @@ quadrant <- ggplot(data_all) +
         panel.border = element_rect(color="black", linewidth=2),
         text = element_text(family = "Arial", size=20, color="black"))
 
-#ggsave(quadrant, file = here("outputs/Figures/final_figures", "quadrant_plot_DAA.tiff"), 
+#ggsave(quadrant, file = paste0("output_path, "Figures/quadrant_plot_DAA.jpg"), 
 #        width = 6, height = 4, dpi=300)
 
 ```

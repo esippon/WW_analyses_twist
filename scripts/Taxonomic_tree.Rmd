@@ -13,34 +13,41 @@ library(dplyr)
 library(tidyr)
 library(ggtree)
 library(ade4)
-
 ```
 
 # Load data
 
+Set paths to data directory and output directory
 ```{r}
-esviritu_res <- fread(here("data", "Esviritu_HostDiseaseGenometypeV5.tsv"))
-colnames(esviritu_res)[1] <- "sample_ID"
+data_path = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/data/"
 
-esviritu_res_human <- esviritu_res[esviritu_res$host_species == "Homo sapiens", ]
-
-sample_metadata <- read.csv(here("data", "samples_metadata.csv"), sep=";", dec=",")
+output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
 ```
+
+```{r}
+esviritu_res <- fread(paste0(data_path, "Esviritu_HostDiseaseGenometypeV5.tsv")) %>%
+  rename(sample_ID = sample_id)
+
+esviritu_res_human <- esviritu_res %>% 
+  filter(host_species == "Homo sapiens")
+
+sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")
+```
+
 
 # TAX TREE FOR ALL DETECTED VIRUSES
 ## Hierarchical tax table for each detected species
 
 ```{r}
 tax_hierarchy <- esviritu_res %>%
-  distinct(species, genus, family,
-           order, tclass, phylum) %>%
+  distinct(species, genus, family, order, tclass, phylum) %>%
   ungroup() %>%
   mutate(species = gsub("\\W+", "", species)) %>%
   mutate(genus = gsub("\\W+", "", genus)) %>%
   mutate(family = gsub("\\W+", "", family)) %>%
   mutate(order = gsub("\\W+", "", order)) %>%
   mutate(tclass = gsub("\\W+", "", tclass)) %>%
-  mutate(phylum = gsub("\\W+", "", phylum)) 
+  mutate(phylum = gsub("\\W+", "", phylum))
 ``` 
 
 ```{r}
@@ -97,8 +104,6 @@ geom_text(aes(label=node))
 View(tree_all@data)
 
 ```{r detection-freq-annotation}
-#pal <- park_palette("DeathValley")
-
 pal <- c("#EF476F", "#3E8C6E", "#F4A261")
 
 tax_tree <- tree_all %<+% freq_info_dt + 
@@ -173,7 +178,6 @@ tax_tree <- tree_all %<+% freq_info_dt +
 
   theme(legend.position = "bottom", 
         legend.direction = "horizontal",
-        #legend.position = c(0.5, 0.95),
         legend.justification = c(0.5, 1),
         legend.box.margin = margin(0,0,0,0),
         plot.margin = margin(0, 0, 0, 0),
@@ -188,8 +192,8 @@ tax_tree <- tree_all %<+% freq_info_dt +
 
 tax_tree
 
-#ggsave(tax_tree, file= here("outputs/Figures/final_figures", 
-#                            "tax_tree_all.tiff"), width=8, height=6, dpi=300)
+ggsave(tax_tree, file = paste0(output_path, "Figures/tax_tree_all.jpg"), 
+       width=8, height=6, dpi=300)
 ```
 
 # TAX TREE FOR HUMAN VIRUSES
@@ -290,7 +294,7 @@ species_family_df <- esviritu_res[, c("family", "species")] %>%
          species = gsub("\\W+", "", species))
 
 annots <- get_clade_annot_commands(taxo_phylo_h, species_family_df, tree_h)
-#str(annots)
+
 (cat(annots))
 
 ```
@@ -353,8 +357,8 @@ tax_tree_year <- tree_h %<+% freq_info_dt +
 
 tax_tree_year
 
-#ggsave(tax_tree_year, file= here("outputs/Figures/final_figures", 
-#                                 "tax_tree_human_years.tiff"), width=8, height=6, dpi=300)
+ggsave(tax_tree_year, file= paste0(output_path, "Figures/tax_tree_human_years.jpg"), 
+       width=8, height=6, dpi=300)
 ```
 
 

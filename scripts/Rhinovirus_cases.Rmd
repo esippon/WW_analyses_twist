@@ -1,9 +1,18 @@
 ---
 title: "Rhinovirus_cases"
 ---
-Load the case data
+
+# Load data
+
+Set paths to data directory and output directory
 ```{r}
-rhino <- read.csv(here("data", "Rhinovirus_cases.csv"), sep=";", header=TRUE)
+data_path = "path/to/data"
+
+output_path  = "path/to/output_dir"
+```
+
+```{r}
+rhino <- read.csv(paste0(data_path, "Rhinovirus_cases.csv"), sep=";", header=TRUE)
 ```
 
 ```{r}
@@ -32,7 +41,7 @@ rhino_cases <- rhino %>%
           legend.title = element_text(""),
           legend.text = element_text(size=12))
 
-#ggsave(rhino_cases, 
-#       file = here("outputs/Figures/final_figures", "rhino_cases.tiff"), 
-#       width = 7.2, height = 4, units = "in", dpi=300)
+ggsave(rhino_cases, 
+       file = paste0(output_path, "Figures/rhino_cases.jpg"), 
+       width = 7.2, height = 4, units = "in", dpi=300)
 ```
