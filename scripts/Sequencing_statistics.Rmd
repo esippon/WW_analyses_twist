@@ -24,7 +24,7 @@ Set paths to data directory and output directory
 ```{r}
 data_path = "path/to/data"
 
-output_path  = "path/to/output_dir"
+output_path  = "path/to/save/outputs"
 ```
 
 
@@ -83,7 +83,7 @@ Do rarefraction curve to the whole data
 rarecurve_all <- plot_rarecurve_plot(esviritu_res, "species")
 rarecurve_all
 
-ggsave(rarecurve_all, file = paste0(output_path, "Figures/rarecurve_all.jpg"), 
+ggsave(rarecurve_all, file = paste0(output_path, "rarecurve_all.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 ```
 
@@ -163,7 +163,7 @@ plot_vread_percentage_all(v_reads_all)
 plot_vread_number_all(v_reads_all)
 
 ggsave(v_reads_all_plot, 
-       file = paste0(output_path, "Figures/v_reads_years_all.jpg"), 
+       file = paste0(output_path, "v_reads_years_all.jpg"), 
        width = 8, height = 4, units = "in", dpi=300)
 ```
 Test the difference between the proportion and number of viral reads between years
@@ -277,7 +277,7 @@ asm_coverage_cats <- plot_coverage_cat(esviritu_res)
 asm_coverage_cats
 
 ggsave(asm_coverage_cats, 
-       file = paste0(output_path, "Figures/asm_coverge_cats_years.jpg"), 
+       file = paste0(output_path, "asm_coverge_cats_years.jpg"), 
        width = 7.2, height = 4, units = "in", dpi=300)
 ```
 
