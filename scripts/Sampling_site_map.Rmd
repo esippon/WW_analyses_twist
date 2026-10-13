@@ -5,7 +5,7 @@ author: "Eevi Sipponen"
 
 Set the path for output, where to save figure
 ```{r}
-output_path  = "C:/Users/tpeesi/Documents/Manuscript1/MANUSCRIPT_human_virome_2021_vs_2024/outputs/"
+output_path  = "path/to/output_dir"
 ```
 
 Load libraries
