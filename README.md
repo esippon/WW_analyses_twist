@@ -10,7 +10,9 @@ Repository contains the code and data used to produce the analyses and figures i
 
 
 data: Data required for reproducing analyses and fiugres.
+
 scripts: Scripts for producing the analysis and figures presented, separated by theme.
+
 figures: Figures presented in the related mansucript.
 
 ### Data
