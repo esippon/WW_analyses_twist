@@ -7,11 +7,15 @@ Repository contains the code and data used to produce the analyses and figures i
 
 
 ## Repository contains:
+
+
 data: Data required for reproducing analyses and fiugres.
 scripts: Scripts for producing the analysis and figures presented, separated by theme.
 figures: Figures presented in the related mansucript.
 
-**Data**
+### Data
+
+
 `Esviritu_HostDiseaseGenotypeV5.tsv`: EsViritu results with genometype, host and tropism annotations and corresponding references.
 
 `MaAsLin3_significant_species.tsv`: Life-style and infection type annotations for significant species identified in MaAsLin3 analysis.
@@ -20,7 +24,8 @@ figures: Figures presented in the related mansucript.
 
 `sample_metadata.csv`: associated metadata for each sample
 
-**Scripts**
+### Scripts
+
 
 `Alpha_diversity.Rmd`
 Calculation of alpha diversity metrics, analyses for related metrics and producing figures Fig2B, C, D.
@@ -56,6 +61,10 @@ Producing supplementary figure FigS1. Requires Rhinovirus_cases.csv as an input 
 
 `Sampling_site_map.Rmd`
 Producing figure Fig5.
+
+### Figures
+
+All figures from the publication in .pdf format.
 
 # Reproducing figures and analyses
 
