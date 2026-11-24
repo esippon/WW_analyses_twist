@@ -1,0 +1,102 @@
+---
+title: "Rhinovirus_cases"
+---
+
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+
+# Load data
+
+Set paths to data directory and output directory
+```{r}
+data_path = "path/to/data/"
+
+output_path  = "path/to/outputs/"
+```
+
+```{r}
+esviritu_res <- fread(paste0(data_path, "Esviritu_HostDiseaseGenometypeV5.tsv"))
+
+esviritu_res_human <- esviritu_res %>% 
+  filter(host_species == "Homo sapiens")
+
+sample_metadata <- read.csv(paste0(data_path, "samples_metadata.csv"), sep=";", dec=",")%>%
+  select(sample_ID, Year_month, Year_cat, Month, Year) %>%
+  rename(sample_id = sample_ID)
+
+```
+
+```{r}
+rhino_cases <- read.csv(paste0(data_path, "Rhinovirus_cases.csv"), sep=";", header=TRUE)
+```
+
+
+Sum all rhinovirus A detections by month
+```{r}
+rhino_rpkmf_month <- esviritu_res %>%
+  filter(species == "s__Rhinovirus A") %>%
+  merge(., sample_metadata, by="sample_id") %>%
+  group_by(Year_month) %>%
+  mutate(rhino_rpkmf_month = sum(true_rpkmf)) %>%
+  select(rhino_rpkmf_month, Month, Year) %>%
+  distinct()
+  
+```
+
+Merge datatypes
+
+```{r}
+rhino_by_month <- merge(rhino_cases, rhino_rpkmf_month, by=c("Year", "Month"), all.x=TRUE) %>%
+  mutate(rhino_rpkmf_month = ifelse(is.na(rhino_rpkmf_month), 0, rhino_rpkmf_month))%>%
+  pivot_longer(cols = c(rhino_rpkmf_month, cases),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(Year_cat, variable) %>%
+  mutate(value_scaled = (value - min(value)) /
+                          (max(value) - min(value)),
+         dot_type = ifelse(value_scaled == 0, "No detection", "Detection"))
+```
+
+
+
+```{r}
+pal <- c("#7B71B6", "#E06666")
+
+rhino_plot <- rhino_by_month %>%
+  mutate(Month=factor(Month, levels=c(4:12,1:3))) %>%
+  ggplot(data=., aes(x=Month, y=value_scaled, group=interaction(Year_cat, variable))) +
+  
+  geom_point(aes(color=Year_cat, shape=dot_type, size=dot_type)) +
+  geom_line(aes(color=Year_cat, linetype = variable),alpha=0.7, linewidth = 1) +
+  
+  scale_color_manual(values=c("2020-2021"=pal[1], "2024-2025"=pal[2]), name="Year") +
+  scale_linetype_manual(values=c("cases" = "solid", "rhino_rpkmf_month" = "dashed"),
+                                 name="Datatype",
+                                 labels=c("Cases", "Wastewater \nabundance (RPKMF)")) +
+  
+  scale_shape_manual(values=c("No detection"=13, "Detection"=19),
+                     name="Detections") +
+  scale_size_manual(values=c("No detection"=3, "Detection"=1),
+                     name="Detections") +
+    
+    labs(y="Scaled metric(0=min, 1=max per datatype)", x="") +
+    scale_x_discrete(labels = c("4"="April", "5"="May", "6"="June", 
+                                 "7"="July", "8"="Aug.", "9"="Sept.", 
+                                 "10"="Oct.","11"="Nov.", 
+                                 "12"="Dec.", "1"="Jan.",
+                                 "2"="Feb.", "3"="March")) +
+    theme_bw() +
+    theme(axis.text.x = element_text(size = 12),
+          legend.title = element_text(""),
+          legend.text = element_text(size=12),
+          legend.key.width = unit(1.5, "cm"))
+
+ggsave(rhino_plot, 
+       file = paste0(output_path, "rhino_cases_ww.jpg"), 
+       width = 8, height = 4, units = "in", dpi=300)
+```

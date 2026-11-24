@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+author: "Eevi Sipponen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(data.table)
+library(dplyr)
+```
+
+
+```{r}
+data_path = "path/to/data/"
+
+output_path  = "path/to/outputs/"
+```
+
+Data from: https://github.com/OxCGRT/covid-policy-dataset/blob/main/data/OxCGRT_compact_national_v1.csv
+
+```{r}
+stringency_idx <- fread(paste0(data_path, "OxCGRT_compact_national_v1.csv"))
+
+stringency_idx_fin <- stringency_idx %>%
+  filter(CountryName == "Finland") %>%
+  select(CountryName, CountryCode, Date, StringencyIndex_Average) %>%
+  mutate(Date_format = paste0(substr(Date, 1,4), "-", substr(Date, 5,6), "-", substr(Date, 7,8)),
+         Date_format = as.Date(Date_format, format="%Y-%m-%d")) %>%
+  arrange((Date_format))
+
+```
+
+```{r}
+line_dates <- as.Date(c("2020-01-01", "2021-01-01", "2022-01-01", "2023-01-01"))
+
+
+stringency_index_plot <- ggplot(data=stringency_idx_fin, aes(x=Date_format, y=StringencyIndex_Average)) +
+  geom_line() +
+  scale_x_date(date_labels = "%Y-%m-%d",
+               date_breaks = "1 month") +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = line_dates,
+             linetype = "dashed") +
+  labs(x="Date", y="Stringency Index")
+
+ggsave(stringency_index_plot, file = paste0(output_path, "stringency_index.jpg"), 
+        width = 10, height = 7, units = "in", dpi=300)
+```
+
+
+
+
+
+
+
