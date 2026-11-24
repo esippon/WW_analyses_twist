@@ -70,8 +70,10 @@ All figures from the publication in .pdf format.
 
 # Reproducing figures and analyses
 
-1.) git clone this repo
+1.) git clone this repo or download it as a .zip file
 
 2.) open the .Rproj file in RStudio 
 
 3.) use renv to install the necessary libraries: renv::restore()
+
+Note: set appropriate paths to data directory and output directory at the beginning of each script to fetch and save the items right.
